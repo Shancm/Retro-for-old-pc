@@ -1,0 +1,353 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Retro OS v1.0 - /usr/local/bin/retro
+# Standalone CLI orchestrator. Installed by install.sh.
+# =============================================================================
+set -Eeuo pipefail
+
+# When installed, config.env lives alongside the other project files under
+# RETRO_ROOT. Fall back gracefully if it's missing so `retro` never hard-crashes
+# on a system where only this single file was copied.
+RETRO_ROOT_DEFAULT="/opt/retro-os"
+if [[ -f "${RETRO_ROOT_DEFAULT}/config.env" ]]; then
+    # shellcheck source=/opt/retro-os/config.env
+    source "${RETRO_ROOT_DEFAULT}/config.env"
+else
+    # Minimal inline fallback so the CLI still works standalone.
+    export TARGET_USER="${SUDO_USER:-${USER:-root}}"
+    export TARGET_HOME="${HOME:-/root}"
+    export RETRO_BURNER_DIR="/mnt/burner"
+    export RETRO_SNAP_DIR="/var/lib/retro-os/snapshots"
+    export RETRO_TOR_SERVICE="tor"
+    export C_RESET='\033[0m'; export C_RED='\033[0;31m'; export C_GREEN='\033[0;32m'
+    export C_YELLOW='\033[0;33m'; export C_CYAN='\033[0;36m'; export C_BOLD='\033[1m'
+    retro_info()  { echo -e "${C_CYAN}[*]${C_RESET} $*"; }
+    retro_ok()    { echo -e "${C_GREEN}[+]${C_RESET} $*"; }
+    retro_warn()  { echo -e "${C_YELLOW}[!]${C_RESET} $*"; }
+    retro_error() { echo -e "${C_RED}[x]${C_RESET} $*"; }
+    retro_die()   { retro_error "$@"; exit 1; }
+    is_command()  { command -v "$1" >/dev/null 2>&1; }
+    is_btrfs_root(){ [[ "$(findmnt -n -o FSTYPE / 2>/dev/null)" == "btrfs" ]]; }
+fi
+
+export RETRO_VERSION="${RETRO_OS_VERSION:-1.1}"
+
+# -----------------------------------------------------------------------------
+# Helper: require a real (non-root-owned-only) desktop session for GUI bits
+# -----------------------------------------------------------------------------
+_need_display() {
+    if [[ -z "${WAYLAND_DISPLAY:-}" && -z "${DISPLAY:-}" ]]; then
+        retro_warn "No WAYLAND_DISPLAY or DISPLAY detected - attempting X11 fallback via xhost/DISPLAY=:0"
+        export DISPLAY="${DISPLAY:-:0}"
+    fi
+}
+
+show_banner() {
+    echo -e "${C_GREEN}"
+    cat << 'BANNER'
+RRRRRRRRRRRRRRRRR   EEEEEEEEEEEEEEEEEEEEEETTTTTTTTTTTTTTTTTTTTTTTRRRRRRRRRRRRRRRRR        OOOOOOOOO          
+R::::::::::::::::R  E::::::::::::::::::::ET:::::::::::::::::::::TR::::::::::::::::R     OO:::::::::OO        
+R::::::RRRRRR:::::R E::::::::::::::::::::ET:::::::::::::::::::::TR::::::RRRRRR:::::R  OO:::::::::::::OO      
+RR:::::R     R:::::REE::::::EEEEEEEEE::::ET:::::TT:::::::TT:::::TRR:::::R     R:::::RO:::::::OOO:::::::O     
+  R::::R     R:::::R  E:::::E       EEEEEETTTTTT  T:::::T  TTTTTT  R::::R     R:::::RO::::::O   O::::::O     
+  R::::R     R:::::R  E:::::E                     T:::::T          R::::R     R:::::RO:::::O     O:::::O     
+  R::::RRRRRR:::::R   E::::::EEEEEEEEEE           T:::::T          R::::RRRRRR:::::R O:::::O     O:::::O     
+  R:::::::::::::RR    E:::::::::::::::E           T:::::T          R:::::::::::::RR  O:::::O     O:::::O     
+  R::::RRRRRR:::::R   E:::::::::::::::E           T:::::T          R::::RRRRRR:::::R O:::::O     O:::::O     
+  R::::R     R:::::R  E::::::EEEEEEEEEE           T:::::T          R::::R     R:::::RO:::::O     O:::::O     
+  R::::R     R:::::R  E:::::E                     T:::::T          R::::R     R:::::RO:::::O     O:::::O     
+  R::::R     R:::::R  E:::::E       EEEEEE        T:::::T          R::::R     R:::::RO::::::O   O::::::O     
+RR:::::R     R:::::REE::::::EEEEEEEE:::::E      TT:::::::TT      RR:::::R     R:::::RO:::::::OOO:::::::O     
+R::::::R     R:::::RE::::::::::::::::::::E      T:::::::::T      R::::::R     R:::::R OO:::::::::::::OO      
+R::::::R     R:::::RE::::::::::::::::::::E      T:::::::::T      R::::::R     R:::::R   OO:::::::::OO        
+RRRRRRRR     RRRRRRREEEEEEEEEEEEEEEEEEEEEE      TTTTTTTTTTT      RRRRRRRR     RRRRRRR     OOOOOOOOO          
+BANNER
+    echo -e "${C_CYAN}                                                                                         [ v${RETRO_VERSION} ]${C_RESET}"
+    echo -e "${C_BOLD}  ================================================================================================${C_RESET}"
+    echo -e "${C_GREEN}                                    Founder: Shan CM${C_RESET}"
+    echo -e "${C_BOLD}  ================================================================================================${C_RESET}\n"
+}
+
+usage() {
+    show_banner
+    cat << USAGE
+
+Usage: retro <command> [args]
+
+Commands:
+  update               Update Retro OS in-place without losing user data
+  term                Launch the Retro terminal (kitty)
+  mon                 Launch btop system monitor
+  kali                Launch/enter the Distrobox Kali container (X11/Wayland pass-through)
+  scan [target]        Run an nmap scan against target (default: local subnet)
+  burner              Create/enter an in-RAM ephemeral workspace (tmpfs)
+  snap [create|list|rollback]
+                       Manage Btrfs/Snapper snapshots (create is default)
+  ghost [on|off|status]
+                       Toggle Tor "ghost mode" system-wide
+  mode [cyber|office]  Switch UI/workflow mode
+  doctor               Auto-fix broken packages, clean snapshots, trim SSD
+  panic                Emergency lockdown: kill network, wipe burner, lock screen
+  help                 Show this message
+
+USAGE
+}
+
+cmd_term() {
+    _need_display
+    if is_command kitty; then
+        nohup kitty >/dev/null 2>&1 &
+        disown
+        retro_ok "Retro terminal launched."
+    else
+        retro_die "kitty is not installed."
+    fi
+}
+
+cmd_mon() {
+    if is_command btop; then
+        exec btop
+    elif is_command htop; then
+        retro_warn "btop not found, falling back to htop."
+        exec htop
+    else
+        retro_die "Neither btop nor htop is installed."
+    fi
+}
+
+cmd_kali() {
+    _need_display
+    if ! is_command distrobox; then
+        retro_die "distrobox is not installed."
+    fi
+
+    # Check if the container already exists
+    if ! distrobox list 2>/dev/null | grep -q "retro-kali"; then
+        retro_warn "Kali container 'retro-kali' not found."
+        retro_info "Initial setup requires downloading the Kali Linux rolling image (~2-3GB)."
+
+        # Network connectivity check
+        retro_info "Verifying internet connection..."
+        if ! ping -c 1 8.8.8.8 >/dev/null 2>&1; then
+            retro_die "No internet connection detected. Please connect to the internet and run 'retro kali' again."
+        fi
+
+        retro_ok "Network connection verified."
+        retro_info "Creating and downloading 'retro-kali' container. Please wait..."
+        
+        distrobox create --name retro-kali --image kalilinux/kali-rolling:latest --yes
+        retro_ok "Kali container created successfully."
+    fi
+
+    # Pass-through Wayland & X11 display sockets safely
+    local extra_env=()
+    [[ -n "${WAYLAND_DISPLAY:-}" ]] && extra_env+=(--additional-flags "--env WAYLAND_DISPLAY=${WAYLAND_DISPLAY}")
+    [[ -n "${DISPLAY:-}" ]] && extra_env+=(--additional-flags "--env DISPLAY=${DISPLAY}")
+
+    retro_info "Entering Retro Kali container..."
+    distrobox enter retro-kali "${extra_env[@]}"
+}
+
+cmd_scan() {
+    if ! is_command nmap; then
+        retro_die "nmap is not installed."
+    fi
+    local target="${1:-}"
+    if [[ -z "${target}" ]]; then
+        local subnet
+        subnet="$(ip -4 route show default 2>/dev/null | awk '{print $3}' | head -n1)"
+        if [[ -z "${subnet}" ]]; then
+            retro_die "Could not auto-detect a target/subnet. Usage: retro scan <target>"
+        fi
+        target="${subnet}/24"
+        retro_warn "No target given - defaulting to local subnet: ${target}"
+    fi
+    nmap -sV --top-ports 100 "${target}"
+}
+
+cmd_burner() {
+    require_root_soft
+    mkdir -p "${RETRO_BURNER_DIR}"
+    if ! mountpoint -q "${RETRO_BURNER_DIR}" 2>/dev/null; then
+        retro_info "Mounting ephemeral RAM workspace at ${RETRO_BURNER_DIR}..."
+        mount -t tmpfs -o size=1G,mode=1777 retro-burner "${RETRO_BURNER_DIR}"
+        retro_ok "Burner workspace mounted (tmpfs, 1G, wiped on unmount/reboot)."
+    else
+        retro_ok "Burner workspace already mounted at ${RETRO_BURNER_DIR}."
+    fi
+    echo "${RETRO_BURNER_DIR}"
+}
+
+cmd_snap() {
+    local action="${1:-create}"
+    if ! is_btrfs_root; then
+        retro_die "Root filesystem is not Btrfs - snapshots unavailable."
+    fi
+    if ! is_command snapper; then
+        retro_die "snapper is not installed."
+    fi
+    case "${action}" in
+        create)
+            snapper -c root create --description "retro-cli manual snapshot $(date '+%Y-%m-%d %H:%M:%S')"
+            retro_ok "Snapshot created."
+            ;;
+        list)
+            snapper -c root list
+            ;;
+        rollback)
+            local num="${2:-}"
+            [[ -z "${num}" ]] && retro_die "Usage: retro snap rollback <snapshot-number>"
+            snapper -c root rollback "${num}"
+            retro_ok "Rollback staged for snapshot ${num}. Reboot to apply."
+            ;;
+        *)
+            retro_die "Unknown snap action: ${action} (use create|list|rollback)"
+            ;;
+    esac
+}
+
+cmd_ghost() {
+    local action="${1:-status}"
+    require_root_soft
+    case "${action}" in
+        on)
+            systemctl start "${RETRO_TOR_SERVICE}"
+            retro_ok "Ghost mode ON - traffic routing available via Tor (configure app proxies to 127.0.0.1:9050)."
+            ;;
+        off)
+            systemctl stop "${RETRO_TOR_SERVICE}"
+            retro_ok "Ghost mode OFF - Tor stopped."
+            ;;
+        status)
+            if systemctl is-active --quiet "${RETRO_TOR_SERVICE}"; then
+                retro_ok "Ghost mode is ACTIVE."
+            else
+                retro_warn "Ghost mode is INACTIVE."
+            fi
+            ;;
+        *)
+            retro_die "Unknown ghost action: ${action} (use on|off|status)"
+            ;;
+    esac
+}
+
+cmd_mode() {
+    local mode="${1:-}"
+    case "${mode}" in
+        cyber)
+            retro_info "Switching to CYBER mode: dark theme, security tools pinned, ghost recommended."
+            retro_ok "Cyber mode active. Consider: retro ghost on"
+            ;;
+        office)
+            retro_info "Switching to OFFICE mode: light-friendly layout, productivity apps pinned."
+            retro_ok "Office mode active."
+            ;;
+        *)
+            retro_die "Usage: retro mode [cyber|office]"
+            ;;
+    esac
+}
+
+cmd_doctor() {
+    require_root_soft
+    retro_info "Running system doctor: package repair, snapshot cleanup, SSD trim..."
+
+    retro_info "Fixing broken/partial package installs..."
+    apt-get -f install -y -qq >/dev/null 2>&1 || retro_warn "apt-get -f install reported issues."
+    dpkg --configure -a >/dev/null 2>&1 || retro_warn "dpkg --configure -a reported issues."
+
+    if is_btrfs_root && is_command snapper; then
+        retro_info "Cleaning old snapshots (timeline + number cleanup)..."
+        snapper -c root cleanup timeline >/dev/null 2>&1 || true
+        snapper -c root cleanup number >/dev/null 2>&1 || true
+    else
+        retro_warn "Skipping snapshot cleanup (not Btrfs or snapper missing)."
+    fi
+
+    if is_command fstrim; then
+        retro_info "Trimming SSD..."
+        fstrim -av 2>/dev/null || retro_warn "fstrim reported issues (may be normal for some disks)."
+    fi
+
+    retro_ok "Doctor run complete."
+}
+
+cmd_panic() {
+    require_root_soft
+    retro_warn "PANIC MODE ENGAGED"
+
+    if is_command nmcli; then
+        nmcli networking off 2>/dev/null || true
+    fi
+    local def_iface
+    def_iface="$(ip -4 route show default 2>/dev/null | awk '{print $5}' | head -n1)"
+    if [[ -n "${def_iface}" ]]; then
+        ip link set dev "${def_iface}" down 2>/dev/null || true
+    fi
+
+    retro_warn "Network interfaces brought down."
+
+    if mountpoint -q "${RETRO_BURNER_DIR}" 2>/dev/null; then
+        umount -f "${RETRO_BURNER_DIR}" 2>/dev/null || true
+        retro_warn "Burner workspace wiped."
+    fi
+
+    if is_command loginctl; then
+        loginctl lock-sessions 2>/dev/null || true
+    elif is_command qdbus; then
+        qdbus org.freedesktop.ScreenSaver /ScreenSaver Lock 2>/dev/null || true
+    fi
+    retro_warn "Session locked. Stay frosty."
+}
+
+cmd_update() {
+    require_root_soft
+    retro_info "Checking for Retro OS updates..."
+
+    apt-get update -qq
+    apt-get install -y -qq python3-pyqt6 python3-psutil espeak-ng curl >/dev/null 2>&1 || true
+
+    mkdir -p /opt/retro-os/retro-companion
+
+    local tmp_file="/tmp/retro-new"
+    if curl -fsSL "https://raw.githubusercontent.com/Shancm/retro-os/main/retro" -o "${tmp_file}"; then
+        if head -n 1 "${tmp_file}" | grep -q "bash"; then
+            mv "${tmp_file}" /usr/local/bin/retro
+            chmod +x /usr/local/bin/retro
+            retro_ok "Retro OS successfully updated! User data preserved."
+        else
+            rm -f "${tmp_file}"
+            retro_die "Update verification failed: corrupted download."
+        fi
+    else
+        retro_die "Failed to download update."
+    fi
+}
+
+require_root_soft() {
+    if [[ "${EUID}" -ne 0 ]]; then
+        retro_die "This action requires root. Re-run with: sudo retro ${cmd:-}"
+    fi
+}
+
+main() {
+    local cmd="${1:-help}"
+    shift || true
+    case "${cmd}" in
+        term)    cmd_term "$@" ;;
+        mon)     cmd_mon "$@" ;;
+        kali)    cmd_kali "$@" ;;
+        scan)    cmd_scan "$@" ;;
+        burner)  cmd_burner "$@" ;;
+        snap)    cmd_snap "$@" ;;
+        ghost)   cmd_ghost "$@" ;;
+        mode)    cmd_mode "$@" ;;
+        doctor)  cmd_doctor "$@" ;;
+        panic)   cmd_panic "$@" ;;
+        update)  cmd_update "$@" ;;
+        help|-h|--help) usage ;;
+        *) retro_error "Unknown command: ${cmd}"; usage; exit 1 ;;
+    esac
+}
+
+main "$@"
