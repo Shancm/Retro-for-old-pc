@@ -62,7 +62,6 @@ retro_info "Preparing clean build directory at ${BUILD_DIR} ..."
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
-export LB_SYSLINUX_THEME="none"
 
     lb config \
         --system debian \
