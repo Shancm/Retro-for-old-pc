@@ -62,6 +62,7 @@ retro_info "Preparing clean build directory at ${BUILD_DIR} ..."
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
+export LB_SYSLINUX_THEME="none"
 
     lb config \
         --system debian \
@@ -190,6 +191,12 @@ chmod +x config/hooks/live/0500-retro-cli-install.hook.chroot
 
 # Binary hook: ensure isohybrid is available when packaging the final hybrid ISO
 mkdir -p config/hooks/binary
+cat > config/hooks/binary/0001-bypass-syslinux-theme.binary << 'THEMEOVERRIDE'
+#!/bin/sh
+set -e
+mkdir -p binary/isolinux
+THEMEOVERRIDE
+chmod +x config/hooks/binary/0001-bypass-syslinux-theme.binary
 cat > config/hooks/binary/0010-isohybrid.binary << 'BINHOOK'
 #!/bin/sh
 set -e
