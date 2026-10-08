@@ -78,7 +78,7 @@ cd "${BUILD_DIR}"
         --mirror-binary-security "http://deb.debian.org/debian-security/" \
         --archive-areas "main contrib non-free non-free-firmware" \
         --bootappend-live "boot=live components username=retro hostname=retro-os quiet splash" \
-        --bootloader grub-efi \
+        --bootloader syslinux \
         --iso-application "Retro OS" \
         --iso-volume "RETRO_OS" \
         --iso-publisher "Retro OS Project" \
@@ -93,6 +93,8 @@ retro_ok "live-build config generated."
 # 2.5 Package lists (Core GUI & Retro OS base)
 # -----------------------------------------------------------------------------
 mkdir -p config/package-lists
+cat > config/package-lists/retro-desktop.list.chroot << 'PKGLIST'
+
 # Pure BIOS Boot Stack
 syslinux
 isolinux
@@ -136,6 +138,7 @@ firefox-esr
 firmware-linux
 firmware-linux-nonfree
 firmware-misc-nonfree
+PKGLIST
 
 # -----------------------------------------------------------------------------
 # 3. Hook scripts inside config/hooks/live/
