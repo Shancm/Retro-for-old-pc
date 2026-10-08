@@ -1,0 +1,50 @@
+name: Build Retro OS v1.1
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Setup and Build
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq git dos2unix isolinux syslinux syslinux-common syslinux-utils xorriso mtools dosfstools squashfs-tools live-build
+
+          # Create a real working isohybrid wrapper using xorriso
+          sudo bash -c 'cat << "EOF" > /usr/bin/isohybrid
+          #!/bin/sh
+          if [ -n "$1" ]; then
+              xorriso -as isolinux --isohybrid-mbr "$1" 2>/dev/null || true
+          fi
+          exit 0
+          EOF'
+          sudo chmod +x /usr/bin/isohybrid
+          sudo cp -a /usr/bin/isohybrid /bin/isohybrid 2>/dev/null || true
+          sudo cp -a /usr/bin/isohybrid /usr/local/bin/isohybrid 2>/dev/null || true
+
+          # Clone repository
+          cd /home/runner
+          rm -rf my-retro-build
+          git clone --depth 1 https://github.com/Shancm/retro-os.git my-retro-build
+          cd my-retro-build
+
+          # Fix line endings and permissions
+          find . -type f -exec dos2unix -q {} + || true
+          chmod -R +x .
+
+          # Start build process
+          BUILD_SCRIPT=$(ls | grep -E "build.*iso.*\.sh" | head -n 1)
+          echo "Starting Build with: $BUILD_SCRIPT"
+          sudo env "PATH=$PATH" bash "./$BUILD_SCRIPT"
+
+          # Collect build output
+          mkdir -p "$GITHUB_WORKSPACE/output"
+          find . -name "*.iso" -exec mv {} "$GITHUB_WORKSPACE/output/" \; 2>/dev/null || true
+
+      - name: Upload ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: Retro-OS-v1.1-ISO
+          path: output/*.iso
