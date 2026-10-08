@@ -133,7 +133,8 @@ git
 nano
 micro
 btop
-firefox-esr
+dillo
+badwolf
 
 # Firmware / Drivers
 firmware-linux
