@@ -86,7 +86,7 @@ cd "${BUILD_DIR}"
         --linux-packages "linux-image" \
         --linux-flavours "amd64" \
         --apt-recommends false \
-        --cache true
+        --cache false
         
 retro_ok "live-build config generated."
 
