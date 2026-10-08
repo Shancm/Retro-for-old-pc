@@ -63,7 +63,7 @@ rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
 
-            lb config \
+    lb config \
         --system debian \
         --distribution trixie \
         --architecture amd64 \
