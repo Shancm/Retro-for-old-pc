@@ -94,9 +94,20 @@ retro_ok "live-build config generated."
 # -----------------------------------------------------------------------------
 mkdir -p config/package-lists
 cat > config/package-lists/retro-desktop.list.chroot << 'PKGLIST'
-# Desktop Environment & Display Manager
-plasma-desktop
-sddm
+# Lightweight GUI & Display Manager
+xorg
+openbox
+obconf
+tint2
+feh
+picom
+lightdm
+lightdm-gtk-greeter
+
+# Lightweight File Manager & Terminal
+pcmanfm
+lxappearance
+kitty
 
 # Network & Audio
 network-manager
@@ -111,7 +122,8 @@ curl
 wget
 git
 nano
-alacritty
+micro
+btop
 firefox-esr
 
 # Firmware / Drivers
