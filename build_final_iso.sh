@@ -79,6 +79,7 @@ cd "${BUILD_DIR}"
         --archive-areas "main contrib non-free non-free-firmware" \
         --bootappend-live "boot=live components username=retro hostname=retro-os quiet splash" \
         --bootloader syslinux \
+        --syslinux-theme false \
         --iso-application "Retro OS" \
         --iso-volume "RETRO_OS" \
         --iso-publisher "Retro OS Project" \
