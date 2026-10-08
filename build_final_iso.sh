@@ -93,12 +93,16 @@ retro_ok "live-build config generated."
 # 2.5 Package lists (Core GUI & Retro OS base)
 # -----------------------------------------------------------------------------
 mkdir -p config/package-lists
-cat > config/package-lists/retro-desktop.list.chroot << 'PKGLIST'
+# Pure BIOS Boot Stack
+syslinux
+isolinux
+
 # Lightweight GUI & Display Manager
 xorg
 openbox
 obconf
 tint2
+rofi
 feh
 picom
 lightdm
@@ -108,6 +112,8 @@ lightdm-gtk-greeter
 pcmanfm
 lxappearance
 kitty
+fonts-jetbrains-mono
+papirus-icon-theme
 
 # Network & Audio
 network-manager
@@ -130,7 +136,6 @@ firefox-esr
 firmware-linux
 firmware-linux-nonfree
 firmware-misc-nonfree
-PKGLIST
 
 # -----------------------------------------------------------------------------
 # 3. Hook scripts inside config/hooks/live/
