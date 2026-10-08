@@ -84,7 +84,7 @@ cd "${BUILD_DIR}"
         --iso-publisher "Retro OS Project" \
         --linux-packages "linux-image" \
         --linux-flavours "amd64" \
-        --apt-recommends true \
+        --apt-recommends false \
         --cache true
         
 retro_ok "live-build config generated."
