@@ -190,14 +190,22 @@ echo "Retro OS CLI installed to /usr/local/bin/retro" >&2
 HOOKEOF
 chmod +x config/hooks/live/0500-retro-cli-install.hook.chroot
 
-# Binary hook: ensure isohybrid is available when packaging the final hybrid ISO
+# -----------------------------------------------------------------------------
+# Binary hook: Pure Legacy BIOS (Bypass Ubuntu Theme errors)
+# -----------------------------------------------------------------------------
 mkdir -p config/hooks/binary
-cat > config/hooks/binary/0001-bypass-syslinux-theme.binary << 'THEMEOVERRIDE'
+
+# live-build-ന്റെ തെറ്റായ തീം അന്വേഷണം ഒഴിവാക്കാൻ
+cat > config/hooks/binary/0001-pure-bios.binary << 'THEMEOVERRIDE'
 #!/bin/sh
 set -e
 mkdir -p binary/isolinux
+# isolinux.bin ലഭ്യമാണെന്ന് ഉറപ്പാക്കുന്നു
+if [ -f /usr/lib/ISOLINUX/isolinux.bin ]; then
+    cp /usr/lib/ISOLINUX/isolinux.bin binary/isolinux/ 2>/dev/null || true
+fi
 THEMEOVERRIDE
-chmod +x config/hooks/binary/0001-bypass-syslinux-theme.binary
+chmod +x config/hooks/binary/0001-pure-bios.binary
 
 cat > config/hooks/binary/0010-isohybrid.binary << 'BINHOOK'
 #!/bin/sh
