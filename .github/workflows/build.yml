@@ -1,4 +1,4 @@
-name: Build Retro OS v1.1
+name: Build Retro OS v1.1 lightweight 
 
 on:
   workflow_dispatch:
@@ -46,5 +46,5 @@ jobs:
       - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
-          name: Retro-OS-v1.1-ISO
+          name: Retro-OS-v1.1-ISO lightweight
           path: output/*.iso
