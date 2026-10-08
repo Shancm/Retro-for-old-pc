@@ -18,47 +18,7 @@ apt-get install -y -qq btop micro nmap fzf curl wget pciutils usbutils >/dev/nul
 retro_ok "Lite modules installed."
 
 # -----------------------------------------------------------------------------
-# 1. Rootless Podman + Distrobox
-# -----------------------------------------------------------------------------
-retro_info "Installing rootless Podman and Distrobox..."
-apt-get install -y -qq \
-    uidmap \
-    slirp4netns \
-    fuse-overlayfs \
-    dbus-user-session \
-    ca-certificates \
-    curl >/dev/null
-
-# Distrobox setup with certificate fallback
-if apt-cache show distrobox >/dev/null 2>&1; then
-    apt-get install -y -qq distrobox >/dev/null
-else
-    curl -fsSL https://raw.githubusercontent.com/89luca89/distrobox/main/install \
-        -o /tmp/distrobox-install.sh
-    bash /tmp/distrobox-install.sh --prefix /usr/local >/dev/null
-    rm -f /tmp/distrobox-install.sh
-fi
-
-# Ensure subuid/subgid ranges exist for live-user and target user
-USERS_TO_MAP=()
-[[ -n "${TARGET_USER:-}" && "${TARGET_USER}" != "root" ]] && USERS_TO_MAP+=("${TARGET_USER}")
-[[ "${TARGET_USER}" != "retro" ]] && USERS_TO_MAP+=("retro")
-
-for usr in "${USERS_TO_MAP[@]}"; do
-    if id "${usr}" &>/dev/null; then
-        grep -q "^${usr}:" /etc/subuid 2>/dev/null || usermod --add-subuids 100000-165535 "${usr}" 2>/dev/null || true
-        grep -q "^${usr}:" /etc/subgid 2>/dev/null || usermod --add-subgids 100000-165535 "${usr}" 2>/dev/null || true
-    else
-        # Pre-seed for the live session user
-        echo "${usr}:100000:65536" >> /etc/subuid 2>/dev/null || true
-        echo "${usr}:100000:65536" >> /etc/subgid 2>/dev/null || true
-    fi
-done 
-
-retro_ok "Podman (rootless) and Distrobox installed."
-
-# -----------------------------------------------------------------------------
-# 2. UFW firewall - default deny incoming, allow outgoing
+# 1. UFW firewall - default deny incoming, allow outgoing
 # -----------------------------------------------------------------------------
 retro_info "Configuring UFW firewall (default-deny incoming)..."
 apt-get install -y -qq ufw >/dev/null
@@ -85,21 +45,7 @@ fi
 retro_ok "UFW firewall configured."
 
 # -----------------------------------------------------------------------------
-# 3. Tor ghost daemon + WireGuard
-# -----------------------------------------------------------------------------
-retro_info "Installing Tor and WireGuard..."
-apt-get install -y -qq tor torsocks wireguard wireguard-tools resolvconf >/dev/null
-
-if is_command systemctl; then
-    systemctl disable tor.service >/dev/null 2>&1 || true
-    systemctl stop tor.service >/dev/null 2>&1 || true
-fi
-retro_info "Tor installed but disabled by default (toggle via 'retro ghost')."
-
-retro_ok "Tor and WireGuard installed."
-
-# -----------------------------------------------------------------------------
-# 4. Modern CLI tools
+# 2. Modern CLI tools
 # -----------------------------------------------------------------------------
 retro_info "Installing modern CLI toolkit (btop, ripgrep, micro, nmap, etc)..."
 apt-get install -y -qq \
@@ -119,18 +65,4 @@ apt-get install -y -qq \
     >/dev/null
 
 retro_ok "Modern CLI toolkit installed."
-
-# -----------------------------------------------------------------------------
-# 5. Retro AI engine dependencies (PyQt6 GUI, telemetry, voice alert)
-# -----------------------------------------------------------------------------
-retro_info "Installing Retro AI engine prerequisites..."
-apt-get install -y -qq \
-    python3-psutil \
-    curl >/dev/null
-
-retro_ok "Retro AI dependencies installed."
-
-apt-get autoremove -y -qq >/dev/null 2>&1 || true
-apt-get clean -qq >/dev/null 2>&1 || true
-
 retro_ok "=== Modules setup complete. ==="
