@@ -163,6 +163,7 @@ write_hook() {
     local hook_name="$1"
     local target_script="$2"
     cat > "config/hooks/normal/${hook_name}" << HOOK
+    
 #!/bin/sh
 set -e
 export RETRO_CHROOT_BUILD=1
@@ -197,6 +198,7 @@ set -e
 mkdir -p binary/isolinux
 THEMEOVERRIDE
 chmod +x config/hooks/binary/0001-bypass-syslinux-theme.binary
+
 cat > config/hooks/binary/0010-isohybrid.binary << 'BINHOOK'
 #!/bin/sh
 set -e
