@@ -126,7 +126,6 @@ retro_ok "Modern CLI toolkit installed."
 retro_info "Installing Retro AI engine prerequisites..."
 apt-get install -y -qq \
     python3-psutil \
-    espeak-ng \
     curl >/dev/null
 
 retro_ok "Retro AI dependencies installed."
