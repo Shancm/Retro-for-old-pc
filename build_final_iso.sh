@@ -67,7 +67,7 @@ cd "${BUILD_DIR}"
         --system debian \
         --distribution trixie \
         --architecture amd64 \
-        --binary-images iso-hybrid \
+        --binary-images iso \
         --parent-mirror-bootstrap "http://deb.debian.org/debian/" \
         --parent-mirror-binary "http://deb.debian.org/debian/" \
         --parent-mirror-chroot-security "http://deb.debian.org/debian-security/" \
