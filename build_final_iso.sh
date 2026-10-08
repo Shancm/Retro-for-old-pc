@@ -229,6 +229,10 @@ retro_ok "Chroot hooks installed (0100 -> 0500, all sudo-free)."
 # -----------------------------------------------------------------------------
 retro_info "Starting live-build (this will take a while)..."
 lb clean --purge >/dev/null 2>&1 || true
+
+sed -i 's/syslinux-themes-[^ ]*/ /g' /usr/lib/live/build/binary_syslinux 2>/dev/null || true
+sed -i 's/gfxboot-theme-[^ ]*/ /g' /usr/lib/live/build/binary_syslinux 2>/dev/null || true
+
 lb build 2>&1 | tee -a "${RETRO_LOG_FILE}"
 
 # ഉണ്ടാക്കിയ ISO കണ്ടെത്തി വേരിയബിളിലേക്ക് മാറ്റുന്നു
