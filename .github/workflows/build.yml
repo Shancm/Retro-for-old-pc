@@ -12,17 +12,9 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq git dos2unix isolinux syslinux syslinux-common syslinux-utils xorriso mtools dosfstools squashfs-tools live-build
 
-          # Create a real working isohybrid wrapper using xorriso
-          sudo bash -c 'cat << "EOF" > /usr/bin/isohybrid
-          #!/bin/sh
-          if [ -n "$1" ]; then
-              xorriso -as isolinux --isohybrid-mbr "$1" 2>/dev/null || true
-          fi
-          exit 0
-          EOF'
-          sudo chmod +x /usr/bin/isohybrid
-          sudo cp -a /usr/bin/isohybrid /bin/isohybrid 2>/dev/null || true
-          sudo cp -a /usr/bin/isohybrid /usr/local/bin/isohybrid 2>/dev/null || true
+          # Syslinux-ന്റെ തെറ്റായ Ubuntu theme തിരയൽ റണ്ണറിൽ നിന്ന് നീക്കം ചെയ്യുന്നു
+          sudo sed -i 's/syslinux-themes-[^ ]*/ /g' /usr/lib/live/build/binary_syslinux 2>/dev/null || true
+          sudo sed -i 's/gfxboot-theme-[^ ]*/ /g' /usr/lib/live/build/binary_syslinux 2>/dev/null || true
 
           # Clone repository
           cd /home/runner
