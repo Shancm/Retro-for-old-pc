@@ -27,7 +27,7 @@ jobs:
           # Clone repository
           cd /home/runner
           rm -rf my-retro-build
-          git clone --depth 1 https://github.com/Shancm/retro-os.git my-retro-build
+          git clone --depth 1 https://github.com/Shancm/Retro-for-old-pc.git my-retro-build
           cd my-retro-build
 
           # Fix line endings and permissions
