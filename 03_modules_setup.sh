@@ -6,24 +6,22 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-# shellcheck source=./config.env
 source "${SCRIPT_DIR}/config.env"
-
 require_root
 
-trap 'retro_error "03_modules_setup.sh failed at line ${LINENO} (exit ${?})."' ERR
-
-retro_info "=== [3/3] Modules Setup: Podman / Distrobox / UFW / Tor / WireGuard / CLI ==="
-
+retro_info "Lite modules: minimal CLI tools only..."
 export DEBIAN_FRONTEND=noninteractive
+
 apt-get update -qq
+apt-get install -y -qq btop micro nmap fzf curl wget pciutils usbutils >/dev/null
+
+retro_ok "Lite modules installed."
 
 # -----------------------------------------------------------------------------
 # 1. Rootless Podman + Distrobox
 # -----------------------------------------------------------------------------
 retro_info "Installing rootless Podman and Distrobox..."
 apt-get install -y -qq \
-    podman \
     uidmap \
     slirp4netns \
     fuse-overlayfs \
@@ -127,7 +125,6 @@ retro_ok "Modern CLI toolkit installed."
 # -----------------------------------------------------------------------------
 retro_info "Installing Retro AI engine prerequisites..."
 apt-get install -y -qq \
-    python3-pyqt6 \
     python3-psutil \
     espeak-ng \
     curl >/dev/null
