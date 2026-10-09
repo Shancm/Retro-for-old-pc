@@ -194,17 +194,16 @@ chmod +x config/hooks/live/0500-retro-cli-install.hook.chroot
 # -----------------------------------------------------------------------------
 mkdir -p config/hooks/binary
 
-# live-build-ന്റെ തെറ്റായ തീം അന്വേഷണം ഒഴിവാക്കാൻ
-cat > config/hooks/binary/0001-pure-bios.binary << 'THEMEOVERRIDE'
+# Ubuntu Syslinux Theme Package എറർ പൂർണ്ണമായി തടയാനുള്ള ഹുക്ക്
+cat << 'EOF' > config/hooks/binary/0000-bypass-theme-install.binary
 #!/bin/sh
 set -e
+# syslinux ഡമ്മി പാക്കേജ് ഇൻസ്റ്റാൾ ആയതായി ലൈവ്-ബിൽഡിനെ അറിയിക്കുന്നു
 mkdir -p binary/isolinux
-# isolinux.bin ലഭ്യമാണെന്ന് ഉറപ്പാക്കുന്നു
-if [ -f /usr/lib/ISOLINUX/isolinux.bin ]; then
-    cp /usr/lib/ISOLINUX/isolinux.bin binary/isolinux/ 2>/dev/null || true
-fi
-THEMEOVERRIDE
-chmod +x config/hooks/binary/0001-pure-bios.binary
+mkdir -p chroot/usr/share/syslinux/themes
+exit 0
+EOF
+chmod +x config/hooks/binary/0000-bypass-theme-install.binary
 
 cat > config/hooks/binary/0010-isohybrid.binary << 'BINHOOK'
 #!/bin/sh
@@ -230,11 +229,14 @@ retro_ok "Chroot hooks installed (0100 -> 0500, all sudo-free)."
 retro_info "Starting live-build (this will take a while)..."
 lb clean --purge >/dev/null 2>&1 || true
 
-if [ -f /usr/lib/live/build/binary_syslinux ]; then
-    sed -i 's/syslinux-themes-[^ "]*//g' /usr/lib/live/build/binary_syslinux
-    sed -i 's/gfxboot-theme-[^ "]*//g' /usr/lib/live/build/binary_syslinux
-    sed -i 's/lb chroot_install-packages syslinux/true # bypass/g' /usr/lib/live/build/binary_syslinux 2>/dev/null || true
-fi
+# binary_syslinux-ൽ apt-get ഉപയോഗിച്ച് തീം ഡൗൺലോഡ് ചെയ്യുന്നത് തടയുന്നു:
+for f in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslinux; do
+    if [ -f "$f" ]; then
+        sudo sed -i 's/lb chroot_install-packages syslinux/true #/g' "$f" 2>/dev/null || true
+        sudo sed -i 's/syslinux-themes-[^ "]*//g' "$f" 2>/dev/null || true
+        sudo sed -i 's/gfxboot-theme-[^ "]*//g' "$f" 2>/dev/null || true
+    fi
+done
 
 lb build 2>&1 | tee -a "${RETRO_LOG_FILE}"
 
