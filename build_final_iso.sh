@@ -200,7 +200,7 @@ echo '#!/bin/sh' | tee /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_c
 echo 'exit 0' | tee -a /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_chroot_live-packages >/dev/null 2>&1 || true
 chmod +x /usr/lib/live/build/*live-packages* /usr/bin/lb_chroot_live-packages 2>/dev/null || true
 
-# bootlogo, gfxboot, syslinux themes എന്നിവ മൂലമുള്ള എല്ലാ എററുകളും ഒഴിവാക്കുന്നു:
+# Ubuntu host syslinux theme & bootlogo തടസ്സങ്ങൾ ഒഴിവാക്കുന്നു:
 for f in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslinux /usr/lib/live/build/lb_binary_syslinux; do
     if [ -f "$f" ]; then
         sed -i 's/lb chroot_install-packages syslinux/true #/g' "$f" 2>/dev/null || true
@@ -210,20 +210,28 @@ for f in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslin
     fi
 done
 
-# chroot ഉള്ളിലും ബൂട്ട്‌ലോഡർ ഫോൾഡറിലും ആവശ്യമായ ഫയലുകളും ഡമ്മി bootlogo യും നൽകുന്നു:
-mkdir -p "${BUILD_DIR}/config/includes.chroot/root/isolinux"
+# live-build ഔദ്യോഗികമായി ബൂട്ട്‌ലോഡർ ഫയലുകൾ എടുക്കുന്ന config/bootloaders/isolinux ഡയറക്ടറി ഉണ്ടാക്കുന്നു
 mkdir -p "${BUILD_DIR}/config/bootloaders/isolinux"
-mkdir -p /root/isolinux
-
-cp -f /usr/lib/ISOLINUX/isolinux.bin "${BUILD_DIR}/config/includes.chroot/root/isolinux/" 2>/dev/null || find /usr -name "isolinux.bin" -exec cp {} "${BUILD_DIR}/config/includes.chroot/root/isolinux/" \; 2>/dev/null || true
-cp -f /usr/lib/syslinux/modules/bios/* "${BUILD_DIR}/config/includes.chroot/root/isolinux/" 2>/dev/null || find /usr -name "*.c32" -exec cp {} "${BUILD_DIR}/config/includes.chroot/root/isolinux/" \; 2>/dev/null || true
-
-cp -rf "${BUILD_DIR}/config/includes.chroot/root/isolinux/"* "${BUILD_DIR}/config/bootloaders/isolinux/" 2>/dev/null || true
-cp -rf "${BUILD_DIR}/config/includes.chroot/root/isolinux/"* /root/isolinux/ 2>/dev/null || true
-
-# ലൈവ് ബിൽഡ് പരിശോധിക്കുന്ന binary/isolinux പാത്തിൽ മുൻകൂട്ടി bootlogo നൽകുന്നു
 mkdir -p "${BUILD_DIR}/binary/isolinux"
+mkdir -p "${BUILD_DIR}/binary/boot/isolinux"
+
+# isolinux.bin, .c32 മൊഡ്യൂളുകൾ കൃത്യമായി എല്ലാ പാത്തിലേക്കും പകർന്നു നൽകുന്നു:
+ISOLINUX_SRC="/usr/lib/ISOLINUX/isolinux.bin"
+[ ! -f "$ISOLINUX_SRC" ] && ISOLINUX_SRC="$(find /usr -name "isolinux.bin" 2>/dev/null | head -n1)"
+
+if [ -n "$ISOLINUX_SRC" ]; then
+    cp -f "$ISOLINUX_SRC" "${BUILD_DIR}/config/bootloaders/isolinux/" 2>/dev/null || true
+    cp -f "$ISOLINUX_SRC" "${BUILD_DIR}/binary/isolinux/" 2>/dev/null || true
+    cp -f "$ISOLINUX_SRC" "${BUILD_DIR}/binary/boot/isolinux/" 2>/dev/null || true
+fi
+
+cp -f /usr/lib/syslinux/modules/bios/* "${BUILD_DIR}/config/bootloaders/isolinux/" 2>/dev/null || true
+cp -f /usr/lib/syslinux/modules/bios/* "${BUILD_DIR}/binary/isolinux/" 2>/dev/null || true
+cp -f /usr/lib/syslinux/modules/bios/* "${BUILD_DIR}/binary/boot/isolinux/" 2>/dev/null || true
+
+touch "${BUILD_DIR}/config/bootloaders/isolinux/bootlogo"
 touch "${BUILD_DIR}/binary/isolinux/bootlogo"
+touch "${BUILD_DIR}/binary/boot/isolinux/bootlogo"
 
 lb build 2>&1 | tee -a "${RETRO_LOG_FILE}"
 
