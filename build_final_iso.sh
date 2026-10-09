@@ -191,11 +191,12 @@ retro_ok "Chroot hooks installed."
 retro_info "Starting live-build (this will take a while)..."
 lb clean --purge >/dev/null 2>&1 || true
 
-# Host Ubuntu-വിലെ lb_chroot_live-packages, syslinux theme പ്രശ്നങ്ങൾ ഒഴിവാക്കുന്നു
+# lb_chroot_live-packages ബൈപാസ്സ് ചെയ്യുന്നു:
 echo '#!/bin/sh' | tee /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_chroot_live-packages >/dev/null 2>&1 || true
 echo 'exit 0' | tee -a /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_chroot_live-packages >/dev/null 2>&1 || true
 chmod +x /usr/lib/live/build/*live-packages* /usr/bin/lb_chroot_live-packages 2>/dev/null || true
 
+# syslinux theme ബൈപാസ്സ്:
 for f in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslinux /usr/lib/live/build/lb_binary_syslinux; do
     if [ -f "$f" ]; then
         sed -i 's/lb chroot_install-packages syslinux/true #/g' "$f" 2>/dev/null || true
@@ -203,6 +204,18 @@ for f in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslin
         sed -i 's/gfxboot-theme-[^ "]*//g' "$f" 2>/dev/null || true
     fi
 done
+
+# chroot ഉള്ളിലും പുറത്തും isolinux ബൈനറികൾ മുൻകൂട്ടി ലഭ്യമാക്കുന്നു:
+mkdir -p "${BUILD_DIR}/config/includes.chroot/root/isolinux"
+mkdir -p "${BUILD_DIR}/config/bootloaders/isolinux"
+mkdir -p /root/isolinux
+
+cp -f /usr/lib/ISOLINUX/isolinux.bin "${BUILD_DIR}/config/includes.chroot/root/isolinux/" 2>/dev/null || find /usr -name "isolinux.bin" -exec cp {} "${BUILD_DIR}/config/includes.chroot/root/isolinux/" \; 2>/dev/null || true
+cp -f /usr/lib/syslinux/modules/bios/* "${BUILD_DIR}/config/includes.chroot/root/isolinux/" 2>/dev/null || find /usr -name "*.c32" -exec cp {} "${BUILD_DIR}/config/includes.chroot/root/isolinux/" \; 2>/dev/null || true
+
+# bootloaders ഡയറക്ടറിയിലേക്കും പകർത്തുന്നു
+cp -rf "${BUILD_DIR}/config/includes.chroot/root/isolinux/"* "${BUILD_DIR}/config/bootloaders/isolinux/" 2>/dev/null || true
+cp -rf "${BUILD_DIR}/config/includes.chroot/root/isolinux/"* /root/isolinux/ 2>/dev/null || true
 
 lb build 2>&1 | tee -a "${RETRO_LOG_FILE}"
 
