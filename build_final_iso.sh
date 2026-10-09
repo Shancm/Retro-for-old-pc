@@ -93,6 +93,21 @@ EOF
 # -----------------------------------------------------------------------------
 # 2.5 Package lists (Kernel, Systemd & Desktop Stack)
 # -----------------------------------------------------------------------------
+# live-config-sysvinit ഡമ്മി പാക്കേജ് ക്രിയേറ്റ് ചെയ്ത് എറർ ഒഴിവാക്കുന്നു
+mkdir -p config/includes.chroot/var/lib/dpkg
+cat << 'EOF' >> config/includes.chroot/var/lib/dpkg/status
+
+Package: live-config-sysvinit
+Status: install ok installed
+Priority: optional
+Section: admin
+Installed-Size: 10
+Maintainer: Debian Live Project
+Architecture: all
+Version: 11.0.5
+Description: dummy live-config-sysvinit to bypass build error
+EOF
+
 mkdir -p config/package-lists
 cat > config/package-lists/retro-desktop.list.chroot << 'PKGLIST'
 # Kernel, Init System & Core Boot
