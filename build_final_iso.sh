@@ -53,8 +53,7 @@ rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
 
-# Contents-amd64.gz 404 തടയാൻ --linux-packages "none" നൽകുന്നു.
-# Trixie security 404 ഒഴിവാക്കാൻ --security false നൽകുന്നു.
+# അനാവശ്യ ഓപ്ഷനുകൾ ഒഴിവാക്കിയുള്ള കൃത്യമായ lb config
 lb config \
     --mode debian \
     --distribution trixie \
@@ -68,8 +67,6 @@ lb config \
     --archive-areas "main contrib non-free non-free-firmware" \
     --bootappend-live "boot=live components username=retro hostname=retro-os quiet splash" \
     --bootloader syslinux \
-    --systemd true \
-    --initramfs live-boot \
     --iso-application "Retro OS Lite" \
     --iso-volume "RETRO_OS" \
     --iso-publisher "Retro OS Project" \
@@ -79,20 +76,26 @@ lb config \
 
 retro_ok "live-build config generated."
 
-# sysvinit പാക്കേജുകൾ apt ഇൻസ്റ്റാൾ ചെയ്യുന്നത് പൂർണ്ണമായി തടയുന്നു
+# -----------------------------------------------------------------------------
+# 2.1 Sysvinit തടയാനും Systemd ഉറപ്പാക്കാനുമുള്ള APT Preferences (Conflict Fix)
+# -----------------------------------------------------------------------------
 mkdir -p config/archives
-cat << 'EOF' > config/archives/nosysvinit.pref.chroot
+cat > config/archives/systemd-force.pref.chroot << 'EOF'
 Package: live-config-sysvinit sysvinit-core initscripts
 Pin: release *
 Pin-Priority: -1
+
+Package: live-config-systemd systemd-sysv
+Pin: release *
+Pin-Priority: 999
 EOF
 
 # -----------------------------------------------------------------------------
-# 2.5 Package lists (Kernel, Pure BIOS & Desktop Stack)
+# 2.5 Package lists (Kernel, Systemd & Desktop Stack)
 # -----------------------------------------------------------------------------
 mkdir -p config/package-lists
 cat > config/package-lists/retro-desktop.list.chroot << 'PKGLIST'
-# Kernel & Live Core
+# Kernel, Init System & Core Boot
 linux-image-amd64
 systemd-sysv
 live-boot
@@ -194,7 +197,7 @@ exit 0
 EOF
 chmod +x config/hooks/binary/0000-bypass-theme-install.binary
 
-retro_ok "Chroot hooks installed (EFI/Calamares and isohybrid excluded)."
+retro_ok "Chroot hooks installed."
 
 # -----------------------------------------------------------------------------
 # 4. Build the ISO
