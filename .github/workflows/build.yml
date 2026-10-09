@@ -7,19 +7,15 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - name: Setup Environment and Fix Syslinux
+      - name: Setup Environment and Fix Syslinux Paths
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq git dos2unix isolinux syslinux syslinux-common syslinux-utils xorriso mtools dosfstools squashfs-tools live-build
 
-          # Syslinux binary സ്ക്രിപ്റ്റിൽ നിന്നുള്ള Ubuntu theme പാക്കേജ് നിർബന്ധിത ഇൻസ്റ്റാളേഷൻ നീക്കം ചെയ്യുന്നു
-          for file in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslinux; do
-            if [ -f "$file" ]; then
-              sudo sed -i 's/lb chroot_install-packages syslinux/true # bypass/g' "$file"
-              sudo sed -i 's/syslinux-themes-[^ "]*//g' "$file"
-              sudo sed -i 's/gfxboot-theme-[^ "]*//g' "$file"
-            fi
-          done
+          # isolinux.bin, vesamenu.c32 ഫയലുകൾ lb ആവശ്യപ്പെടുന്ന പാത്തിലേക്ക് നൽകുന്നു
+          sudo mkdir -p /root/isolinux /usr/share/live/build/bootloaders/isolinux /usr/lib/live/build/bootloaders/isolinux
+          sudo cp -f /usr/lib/ISOLINUX/isolinux.bin /root/isolinux/ 2>/dev/null || sudo find /usr -name "isolinux.bin" -exec cp {} /root/isolinux/ \; 2>/dev/null || true
+          sudo cp -f /usr/lib/syslinux/modules/bios/* /root/isolinux/ 2>/dev/null || sudo find /usr -name "*.c32" -exec cp {} /root/isolinux/ \; 2>/dev/null || true
 
           # Clone repository
           cd /home/runner
