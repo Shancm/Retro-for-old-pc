@@ -64,28 +64,28 @@ mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
 
     lb config \
-        --system debian \
-        --distribution trixie \
-        --architecture amd64 \
-        --binary-images iso \
-        --parent-mirror-bootstrap "http://deb.debian.org/debian/" \
-        --parent-mirror-binary "http://deb.debian.org/debian/" \
-        --parent-mirror-chroot-security "http://deb.debian.org/debian-security/" \
-        --parent-mirror-binary-security "http://deb.debian.org/debian-security/" \
-        --mirror-bootstrap "http://deb.debian.org/debian/" \
-        --mirror-binary "http://deb.debian.org/debian/" \
-        --mirror-chroot-security "http://deb.debian.org/debian-security/" \
-        --mirror-binary-security "http://deb.debian.org/debian-security/" \
-        --archive-areas "main contrib non-free non-free-firmware" \
-        --bootappend-live "boot=live components username=retro hostname=retro-os quiet splash" \
-        --bootloader syslinux \
-        --iso-application "Retro OS" \
-        --iso-volume "RETRO_OS" \
-        --iso-publisher "Retro OS Project" \
-        --linux-packages "linux-image" \
-        --linux-flavours "amd64" \
-        --apt-recommends false \
-        --cache false
+           --mode debian \
+           --distribution trixie \
+           --architecture amd64 \
+           --binary-images iso \
+           --parent-mirror-bootstrap "http://deb.debian.org/debian/" \
+           --parent-mirror-binary "http://deb.debian.org/debian/" \
+           --parent-mirror-chroot-security "http://deb.debian.org/debian-security/" \
+           --parent-mirror-binary-security "http://deb.debian.org/debian-security/" \
+           --mirror-bootstrap "http://deb.debian.org/debian/" \
+           --mirror-binary "http://deb.debian.org/debian/" \
+           --mirror-chroot-security "http://deb.debian.org/debian-security/" \
+           --mirror-binary-security "http://deb.debian.org/debian-security/" \
+           --archive-areas "main contrib non-free non-free-firmware" \
+           --bootappend-live "boot=live components username=retro hostname=retro-os quiet splash" \
+           --bootloader syslinux \
+           --iso-application "Retro OS" \
+           --iso-volume "RETRO_OS" \
+           --iso-publisher "Retro OS Project" \
+           --linux-packages "linux-image" \
+           --linux-flavours "amd64" \
+           --apt-recommends false \
+           --cache false
         
 retro_ok "live-build config generated."
 
