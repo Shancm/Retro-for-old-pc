@@ -230,8 +230,11 @@ retro_ok "Chroot hooks installed (0100 -> 0500, all sudo-free)."
 retro_info "Starting live-build (this will take a while)..."
 lb clean --purge >/dev/null 2>&1 || true
 
-sed -i 's/syslinux-themes-[^ ]*/ /g' /usr/lib/live/build/binary_syslinux 2>/dev/null || true
-sed -i 's/gfxboot-theme-[^ ]*/ /g' /usr/lib/live/build/binary_syslinux 2>/dev/null || true
+if [ -f /usr/lib/live/build/binary_syslinux ]; then
+    sed -i 's/syslinux-themes-[^ "]*//g' /usr/lib/live/build/binary_syslinux
+    sed -i 's/gfxboot-theme-[^ "]*//g' /usr/lib/live/build/binary_syslinux
+    sed -i 's/lb chroot_install-packages syslinux/true # bypass/g' /usr/lib/live/build/binary_syslinux 2>/dev/null || true
+fi
 
 lb build 2>&1 | tee -a "${RETRO_LOG_FILE}"
 
