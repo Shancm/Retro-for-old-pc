@@ -196,16 +196,17 @@ echo '#!/bin/sh' | tee /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_c
 echo 'exit 0' | tee -a /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_chroot_live-packages >/dev/null 2>&1 || true
 chmod +x /usr/lib/live/build/*live-packages* /usr/bin/lb_chroot_live-packages 2>/dev/null || true
 
-# syslinux theme ബൈപാസ്സ്:
+# bootlogo, gfxboot, syslinux themes എന്നിവ മൂലമുള്ള എല്ലാ എററുകളും ഒഴിവാക്കുന്നു:
 for f in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslinux /usr/lib/live/build/lb_binary_syslinux; do
     if [ -f "$f" ]; then
         sed -i 's/lb chroot_install-packages syslinux/true #/g' "$f" 2>/dev/null || true
         sed -i 's/syslinux-themes-[^ "]*//g' "$f" 2>/dev/null || true
         sed -i 's/gfxboot-theme-[^ "]*//g' "$f" 2>/dev/null || true
+        sed -i 's/.*bootlogo.*/true # bypass bootlogo/g' "$f" 2>/dev/null || true
     fi
 done
 
-# chroot ഉള്ളിലും പുറത്തും isolinux ബൈനറികൾ മുൻകൂട്ടി ലഭ്യമാക്കുന്നു:
+# chroot ഉള്ളിലും ബൂട്ട്‌ലോഡർ ഫോൾഡറിലും ആവശ്യമായ ഫയലുകളും ഡമ്മി bootlogo യും നൽകുന്നു:
 mkdir -p "${BUILD_DIR}/config/includes.chroot/root/isolinux"
 mkdir -p "${BUILD_DIR}/config/bootloaders/isolinux"
 mkdir -p /root/isolinux
@@ -213,9 +214,12 @@ mkdir -p /root/isolinux
 cp -f /usr/lib/ISOLINUX/isolinux.bin "${BUILD_DIR}/config/includes.chroot/root/isolinux/" 2>/dev/null || find /usr -name "isolinux.bin" -exec cp {} "${BUILD_DIR}/config/includes.chroot/root/isolinux/" \; 2>/dev/null || true
 cp -f /usr/lib/syslinux/modules/bios/* "${BUILD_DIR}/config/includes.chroot/root/isolinux/" 2>/dev/null || find /usr -name "*.c32" -exec cp {} "${BUILD_DIR}/config/includes.chroot/root/isolinux/" \; 2>/dev/null || true
 
-# bootloaders ഡയറക്ടറിയിലേക്കും പകർത്തുന്നു
 cp -rf "${BUILD_DIR}/config/includes.chroot/root/isolinux/"* "${BUILD_DIR}/config/bootloaders/isolinux/" 2>/dev/null || true
 cp -rf "${BUILD_DIR}/config/includes.chroot/root/isolinux/"* /root/isolinux/ 2>/dev/null || true
+
+# ലൈവ് ബിൽഡ് പരിശോധിക്കുന്ന binary/isolinux പാത്തിൽ മുൻകൂട്ടി bootlogo നൽകുന്നു
+mkdir -p "${BUILD_DIR}/binary/isolinux"
+touch "${BUILD_DIR}/binary/isolinux/bootlogo"
 
 lb build 2>&1 | tee -a "${RETRO_LOG_FILE}"
 
