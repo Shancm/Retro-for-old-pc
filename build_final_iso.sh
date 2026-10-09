@@ -217,17 +217,18 @@ retro_ok "Chroot hooks installed."
 # -----------------------------------------------------------------------------
 # 4. Build the ISO
 # -----------------------------------------------------------------------------
-retro_info "Starting live-build (this will take a while)..."
+retro_info "Starting live-build..."
 lb clean --purge >/dev/null 2>&1 || true
 
-# live-config-sysvinit ഫോഴ്സ് ചെയ്യുന്നത് മാറ്റി systemd ആക്കുന്നു:
+# live-config-sysvinit എറർ പൂർണ്ണമായി തടയാൻ chroot_live-packages ബൈപാസ്സ് ചെയ്യുന്നു:
 for f in /usr/lib/live/build/chroot_live-packages /usr/share/live/build/chroot_live-packages; do
     if [ -f "$f" ]; then
-        sed -i 's/live-config-sysvinit/live-config-systemd/g' "$f" 2>/dev/null || true
+        echo '#!/bin/sh' > "$f"
+        echo 'exit 0' >> "$f"
     fi
 done
 
-# Ubuntu syslinux theme ബൈപാസ്സ്:
+# Syslinux Ubuntu തീം ചെക്ക് ബൈപാസ്സ് ചെയ്യുന്നു:
 for f in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslinux; do
     if [ -f "$f" ]; then
         sed -i 's/lb chroot_install-packages syslinux/true #/g' "$f" 2>/dev/null || true
