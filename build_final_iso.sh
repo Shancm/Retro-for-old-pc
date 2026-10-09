@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Retro OS v1.0 - build_final_iso.sh
-# Automated live-build script producing a hybrid bootable x86_64 ISO
-# (Ubuntu noble base, grub-efi) with Retro OS baked in via chroot hooks.
-#
-# Run this on a Debian/Ubuntu build host (NOT inside the target chroot).
-# This script itself uses sudo where appropriate (build host), but the
-# hook scripts it installs into config/hooks/live/ run natively as root
-# inside the chroot and therefore never call sudo themselves.
+# Retro OS v1.0 - build_final_iso.sh (Pure Legacy BIOS Edition)
 # =============================================================================
 set -Eeuo pipefail
 
@@ -26,8 +19,7 @@ retro_info "=== Retro OS ISO Builder ==="
 retro_info "Distro: ${DISTRO} | Arch: ${ARCH} | Output: ${ISO_NAME}"
 
 # -----------------------------------------------------------------------------
-# 1. Host prerequisites (this runs on the BUILD HOST, sudo is appropriate here
-#    because we are NOT inside the chroot yet)
+# 1. Host prerequisites
 # -----------------------------------------------------------------------------
 if [[ "${EUID}" -ne 0 ]]; then
     retro_die "build_final_iso.sh must be run as root (or via sudo) on the build host."
@@ -42,8 +34,6 @@ apt-get install -y -qq \
     live-boot \
     debootstrap \
     debian-archive-keyring \
-    grub-efi-amd64-bin \
-    grub-pc-bin \
     mtools \
     xorriso \
     dosfstools \
@@ -53,7 +43,7 @@ apt-get install -y -qq \
     syslinux-common \
     syslinux-utils >/dev/null
 
-    retro_ok "Host build dependencies installed."
+retro_ok "Host build dependencies installed."
 
 # -----------------------------------------------------------------------------
 # 2. Fresh build tree
@@ -63,26 +53,26 @@ rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
 
-      lb config \
-        --mode debian \
-        --distribution trixie \
-        --architecture amd64 \
-        --binary-images iso \
-        --mirror-bootstrap "http://deb.debian.org/debian/" \
-        --mirror-binary "http://deb.debian.org/debian/" \
-        --parent-mirror-bootstrap "http://deb.debian.org/debian/" \
-        --parent-mirror-binary "http://deb.debian.org/debian/" \
-        --security false \
-        --archive-areas "main contrib non-free non-free-firmware" \
-        --bootappend-live "boot=live components username=retro hostname=retro-os quiet splash" \
-        --bootloader syslinux \
-        --iso-application "Retro OS" \
-        --iso-volume "RETRO_OS" \
-        --iso-publisher "Retro OS Project" \
-        --linux-packages "linux-image" \
-        --linux-flavours "amd64" \
-        --apt-recommends false \
-        --cache false
+lb config \
+    --mode debian \
+    --distribution trixie \
+    --architecture amd64 \
+    --binary-images iso \
+    --mirror-bootstrap "http://deb.debian.org/debian/" \
+    --mirror-binary "http://deb.debian.org/debian/" \
+    --parent-mirror-bootstrap "http://deb.debian.org/debian/" \
+    --parent-mirror-binary "http://deb.debian.org/debian/" \
+    --security false \
+    --archive-areas "main contrib non-free non-free-firmware" \
+    --bootappend-live "boot=live components username=retro hostname=retro-os quiet splash" \
+    --bootloader syslinux \
+    --iso-application "Retro OS" \
+    --iso-volume "RETRO_OS" \
+    --iso-publisher "Retro OS Project" \
+    --linux-packages "linux-image" \
+    --linux-flavours "amd64" \
+    --apt-recommends false \
+    --cache false
         
 retro_ok "live-build config generated."
 
@@ -91,12 +81,8 @@ retro_ok "live-build config generated."
 # -----------------------------------------------------------------------------
 mkdir -p config/package-lists
 cat > config/package-lists/retro-desktop.list.chroot << 'PKGLIST'
-
-# Pure BIOS Boot Stack
 syslinux
 isolinux
-
-# Lightweight GUI & Display Manager
 xorg
 openbox
 obconf
@@ -106,22 +92,16 @@ feh
 picom
 lightdm
 lightdm-gtk-greeter
-
-# Lightweight File Manager & Terminal
 pcmanfm
 lxappearance
 kitty
 fonts-jetbrains-mono
 papirus-icon-theme
-
-# Network & Audio
 network-manager
 network-manager-gnome
 pipewire
 pipewire-audio
 wireplumber
-
-# Core Tools & Utilities
 sudo
 curl
 wget
@@ -130,8 +110,6 @@ nano
 micro
 btop
 dillo
-
-# Firmware / Drivers
 firmware-linux
 firmware-linux-nonfree
 firmware-misc-nonfree
@@ -139,19 +117,14 @@ PKGLIST
 
 # -----------------------------------------------------------------------------
 # 3. Hook scripts inside config/hooks/live/
-#    live-build executes *.hook.chroot INSIDE the chroot as root - so these
-#    hooks must never invoke sudo. We copy the already chroot-safe project
-#    scripts in and wrap each with a thin .hook.chroot entrypoint.
 # -----------------------------------------------------------------------------
 retro_info "Installing chroot hooks into config/hooks/live/ ..."
 mkdir -p config/hooks/normal
 mkdir -p config/hooks/live
 
-# Copy the whole project into the chroot filesystem
 cp -a "${SCRIPT_DIR}"/*.sh "${SCRIPT_DIR}/config.env" "${SCRIPT_DIR}/retro" \
     config/includes.chroot/opt/retro-os/ 2>/dev/null || true
 
-# ഫയലുകൾ ഉണ്ടെങ്കിൽ മാത്രം പെർമിഷൻ മാറ്റുക
 chmod +x config/includes.chroot/opt/retro-os/*.sh 2>/dev/null || true
 chmod +x config/includes.chroot/opt/retro-os/retro 2>/dev/null || true
 
@@ -159,7 +132,6 @@ write_hook() {
     local hook_name="$1"
     local target_script="$2"
     cat > "config/hooks/normal/${hook_name}" << HOOK
-    
 #!/bin/sh
 set -e
 export RETRO_CHROOT_BUILD=1
@@ -173,13 +145,9 @@ HOOK
 write_hook "0100-retro-engine.hook.chroot"    "01_engine_setup.sh"
 write_hook "0200-retro-interface.hook.chroot" "02_interface_setup.sh"
 write_hook "0300-retro-modules.hook.chroot"   "03_modules_setup.sh"
-write_hook "0400-retro-calamares.hook.chroot" "setup_calamares.sh"
 
-# Final hook: install the retro CLI itself + project into the final image
 cat > config/hooks/live/0500-retro-cli-install.hook.chroot << 'HOOKEOF'
 #!/bin/sh
-# Auto-generated by build_final_iso.sh - runs INSIDE the live-build chroot
-# as root. No sudo is used or required here.
 set -e
 install -m 0755 /opt/retro-os/retro /usr/local/bin/retro
 echo "Retro OS CLI installed to /usr/local/bin/retro" >&2
@@ -187,38 +155,19 @@ HOOKEOF
 chmod +x config/hooks/live/0500-retro-cli-install.hook.chroot
 
 # -----------------------------------------------------------------------------
-# Binary hook: Pure Legacy BIOS (Bypass Ubuntu Theme errors)
+# Binary hook: Pure Legacy BIOS Dummy Bypass
 # -----------------------------------------------------------------------------
 mkdir -p config/hooks/binary
-
-# Ubuntu Syslinux Theme Package എറർ പൂർണ്ണമായി തടയാനുള്ള ഹുക്ക്
 cat << 'EOF' > config/hooks/binary/0000-bypass-theme-install.binary
 #!/bin/sh
 set -e
-# syslinux ഡമ്മി പാക്കേജ് ഇൻസ്റ്റാൾ ആയതായി ലൈവ്-ബിൽഡിനെ അറിയിക്കുന്നു
 mkdir -p binary/isolinux
 mkdir -p chroot/usr/share/syslinux/themes
 exit 0
 EOF
 chmod +x config/hooks/binary/0000-bypass-theme-install.binary
 
-cat > config/hooks/binary/0010-isohybrid.binary << 'BINHOOK'
-#!/bin/sh
-set -e
-if ! command -v isohybrid >/dev/null 2>&1; then
-    cat << 'EOF' > /usr/bin/isohybrid
-#!/bin/sh
-if [ -n "$1" ]; then
-    xorriso -as isolinux --isohybrid-mbr "$1" 2>/dev/null || true
-fi
-exit 0
-EOF
-    chmod +x /usr/bin/isohybrid
-fi
-BINHOOK
-chmod +x config/hooks/binary/0010-isohybrid.binary
-
-retro_ok "Chroot hooks installed (0100 -> 0500, all sudo-free)."
+retro_ok "Chroot hooks installed (all sudo-free)."
 
 # -----------------------------------------------------------------------------
 # 4. Build the ISO
@@ -226,25 +175,22 @@ retro_ok "Chroot hooks installed (0100 -> 0500, all sudo-free)."
 retro_info "Starting live-build (this will take a while)..."
 lb clean --purge >/dev/null 2>&1 || true
 
-# binary_syslinux-ൽ apt-get ഉപയോഗിച്ച് തീം ഡൗൺലോഡ് ചെയ്യുന്നത് തടയുന്നു:
 for f in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslinux; do
     if [ -f "$f" ]; then
-        sudo sed -i 's/lb chroot_install-packages syslinux/true #/g' "$f" 2>/dev/null || true
-        sudo sed -i 's/syslinux-themes-[^ "]*//g' "$f" 2>/dev/null || true
-        sudo sed -i 's/gfxboot-theme-[^ "]*//g' "$f" 2>/dev/null || true
+        sed -i 's/lb chroot_install-packages syslinux/true #/g' "$f" 2>/dev/null || true
+        sed -i 's/syslinux-themes-[^ "]*//g' "$f" 2>/dev/null || true
+        sed -i 's/gfxboot-theme-[^ "]*//g' "$f" 2>/dev/null || true
     fi
 done
 
 lb build 2>&1 | tee -a "${RETRO_LOG_FILE}"
 
-# ഉണ്ടാക്കിയ ISO കണ്ടെത്തി വേരിയബിളിലേക്ക് മാറ്റുന്നു
 found_iso="$(find "${BUILD_DIR}" -maxdepth 1 -name '*.iso' | head -n1)"
 if [[ -z "${found_iso}" ]]; then
     retro_die "Build finished but no ISO was found in ${BUILD_DIR}."
 fi
 
-# ഡെബിയൻ തനിയെ നിർമ്മിച്ച ഹൈബ്രിഡ് ISO മൂവ് ചെയ്യുന്നു
 mv "${found_iso}" "${SCRIPT_DIR}/${ISO_NAME}"
 
 retro_ok "=== Build complete: ${SCRIPT_DIR}/${ISO_NAME} ==="
-retro_info "Verify hybrid boot with: file ${SCRIPT_DIR}/${ISO_NAME}"
+retro_info "Verify pure bios boot with: file ${SCRIPT_DIR}/${ISO_NAME}"
