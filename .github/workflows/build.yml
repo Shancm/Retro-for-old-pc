@@ -7,14 +7,19 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - name: Setup and Build
+      - name: Setup Environment and Fix Syslinux
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq git dos2unix isolinux syslinux syslinux-common syslinux-utils xorriso mtools dosfstools squashfs-tools live-build
 
-          # Syslinux-ന്റെ തെറ്റായ Ubuntu theme തിരയൽ റണ്ണറിൽ നിന്ന് നീക്കം ചെയ്യുന്നു
-          sudo sed -i 's/syslinux-themes-[^ ]*/ /g' /usr/lib/live/build/binary_syslinux 2>/dev/null || true
-          sudo sed -i 's/gfxboot-theme-[^ ]*/ /g' /usr/lib/live/build/binary_syslinux 2>/dev/null || true
+          # Syslinux binary സ്ക്രിപ്റ്റിൽ നിന്നുള്ള Ubuntu theme പാക്കേജ് നിർബന്ധിത ഇൻസ്റ്റാളേഷൻ നീക്കം ചെയ്യുന്നു
+          for file in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslinux; do
+            if [ -f "$file" ]; then
+              sudo sed -i 's/lb chroot_install-packages syslinux/true # bypass/g' "$file"
+              sudo sed -i 's/syslinux-themes-[^ "]*//g' "$file"
+              sudo sed -i 's/gfxboot-theme-[^ "]*//g' "$file"
+            fi
+          done
 
           # Clone repository
           cd /home/runner
@@ -38,5 +43,5 @@ jobs:
       - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
-          name: Retro-OS-v1.1-ISO lightweight
+          name: Retro-OS-v1.1-ISO-lightweight
           path: output/*.iso
