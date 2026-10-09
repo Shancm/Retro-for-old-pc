@@ -173,12 +173,16 @@ echo "Retro OS CLI installed to /usr/local/bin/retro" >&2
 HOOKEOF
 chmod +x config/hooks/live/0500-retro-cli-install.hook.chroot
 
-# Binary hook: Syslinux ഇന്റർഫേസ് പാസ്സ് ചെയ്യാൻ
+# Pure BIOS Dummy Theme & Isolinux binary hook
 mkdir -p config/hooks/binary
 cat << 'EOF' > config/hooks/binary/0000-bypass-theme-install.binary
 #!/bin/sh
 set -e
 mkdir -p binary/isolinux
+# isolinux ബൈനറികൾ നേരിട്ട് binary/isolinux-ലേക്ക് പകർന്നു നൽകുന്നു
+cp -f /usr/lib/ISOLINUX/isolinux.bin binary/isolinux/ 2>/dev/null || find /usr -name "isolinux.bin" -exec cp {} binary/isolinux/ \; 2>/dev/null || true
+cp -f /usr/lib/syslinux/modules/bios/* binary/isolinux/ 2>/dev/null || find /usr -name "*.c32" -exec cp {} binary/isolinux/ \; 2>/dev/null || true
+touch binary/isolinux/bootlogo
 exit 0
 EOF
 chmod +x config/hooks/binary/0000-bypass-theme-install.binary
