@@ -12,10 +12,6 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq git dos2unix isolinux syslinux syslinux-common syslinux-utils xorriso mtools dosfstools squashfs-tools live-build
 
-          # Syslinux-ന്റെ തെറ്റായ Ubuntu theme തിരയൽ റണ്ണറിൽ നിന്ന് നീക്കം ചെയ്യുന്നു
-          sudo sed -i 's/syslinux-themes-[^ ]*/ /g' /usr/lib/live/build/binary_syslinux 2>/dev/null || true
-          sudo sed -i 's/gfxboot-theme-[^ ]*/ /g' /usr/lib/live/build/binary_syslinux 2>/dev/null || true
-
           # Clone repository
           cd /home/runner
           rm -rf my-retro-build
@@ -25,6 +21,11 @@ jobs:
           # Fix line endings and permissions
           find . -type f -exec dos2unix -q {} + || true
           chmod -R +x .
+
+          # live-build റൺ ചെയ്യുന്നതിന് തൊട്ടുമുമ്പ് തീം എററുകൾ ബൈപാസ്സ് ചെയ്യുന്നു
+          sudo sed -i 's/lb chroot_install-packages syslinux/true #/g' /usr/lib/live/build/*syslinux* /usr/share/live/build/*syslinux* 2>/dev/null || true
+          sudo sed -i 's/syslinux-themes-[^ "]*//g' /usr/lib/live/build/*syslinux* /usr/share/live/build/*syslinux* 2>/dev/null || true
+          sudo sed -i 's/gfxboot-theme-[^ "]*//g' /usr/lib/live/build/*syslinux* /usr/share/live/build/*syslinux* 2>/dev/null || true
 
           # Start build process
           BUILD_SCRIPT=$(ls | grep -E "build.*iso.*\.sh" | head -n 1)
