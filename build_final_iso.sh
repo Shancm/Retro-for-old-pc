@@ -68,6 +68,7 @@ lb config \
     --archive-areas "main contrib non-free non-free-firmware" \
     --bootappend-live "boot=live components username=retro hostname=retro-os quiet splash" \
     --bootloader syslinux \
+    --initramfs live-boot \
     --iso-application "Retro OS Lite" \
     --iso-volume "RETRO_OS" \
     --iso-publisher "Retro OS Project" \
@@ -84,6 +85,7 @@ mkdir -p config/package-lists
 cat > config/package-lists/retro-desktop.list.chroot << 'PKGLIST'
 # Kernel & Live Core
 linux-image-amd64
+systemd-sysv
 live-boot
 live-config
 live-config-systemd
