@@ -68,6 +68,7 @@ lb config \
     --archive-areas "main contrib non-free non-free-firmware" \
     --bootappend-live "boot=live components username=retro hostname=retro-os quiet splash" \
     --bootloader syslinux \
+    --systemd true \
     --initramfs live-boot \
     --iso-application "Retro OS Lite" \
     --iso-volume "RETRO_OS" \
@@ -77,6 +78,14 @@ lb config \
     --cache false
 
 retro_ok "live-build config generated."
+
+# sysvinit പാക്കേജുകൾ apt ഇൻസ്റ്റാൾ ചെയ്യുന്നത് പൂർണ്ണമായി തടയുന്നു
+mkdir -p config/archives
+cat << 'EOF' > config/archives/nosysvinit.pref.chroot
+Package: live-config-sysvinit sysvinit-core initscripts
+Pin: release *
+Pin-Priority: -1
+EOF
 
 # -----------------------------------------------------------------------------
 # 2.5 Package lists (Kernel, Pure BIOS & Desktop Stack)
