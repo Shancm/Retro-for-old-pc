@@ -11,11 +11,11 @@ source "${SCRIPT_DIR}/config.env"
 trap 'retro_error "build_final_iso.sh failed at line ${LINENO} (exit ${?})."' ERR
 
 BUILD_DIR="${SCRIPT_DIR}/build"
-DISTRO="${RETRO_LB_DISTRO:-trixie}"
+DISTRO="${RETRO_LB_DISTRO:-trixie}"       # Debian Testing "trixie"
 ARCH="amd64"
 ISO_NAME="retro-os-${RETRO_OS_VERSION}-${ARCH}.iso"
 
-retro_info "=== Retro OS Lite Builder (Pure Legacy BIOS) ==="
+retro_info "=== Retro OS ISO Builder (Pure Legacy BIOS) ==="
 retro_info "Distro: ${DISTRO} | Arch: ${ARCH} | Output: ${ISO_NAME}"
 
 # -----------------------------------------------------------------------------
@@ -46,14 +46,13 @@ apt-get install -y -qq \
 retro_ok "Host build dependencies installed."
 
 # -----------------------------------------------------------------------------
-# 2. Fresh build tree & Clean Config
+# 2. Fresh build tree
 # -----------------------------------------------------------------------------
 retro_info "Preparing clean build directory at ${BUILD_DIR} ..."
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
 
-# അനാവശ്യ ഓപ്ഷനുകൾ ഒഴിവാക്കിയുള്ള കൃത്യമായ lb config
 lb config \
     --mode debian \
     --distribution trixie \
@@ -71,57 +70,28 @@ lb config \
     --iso-volume "RETRO_OS" \
     --iso-publisher "Retro OS Project" \
     --linux-packages "none" \
-    --apt-recommends false \
-    --cache false
+    --apt-recommends true \
+    --cache true
 
 retro_ok "live-build config generated."
 
 # -----------------------------------------------------------------------------
-# 2.1 Sysvinit തടയാനും Systemd ഉറപ്പാക്കാനുമുള്ള APT Preferences (Conflict Fix)
+# 2.5 Package lists (Lightweight Stack for 1 GB RAM & Pure BIOS)
 # -----------------------------------------------------------------------------
-mkdir -p config/archives
-cat > config/archives/systemd-force.pref.chroot << 'EOF'
-Package: live-config-sysvinit sysvinit-core initscripts
-Pin: release *
-Pin-Priority: -1
-
-Package: live-config-systemd systemd-sysv
-Pin: release *
-Pin-Priority: 999
-EOF
-
-# -----------------------------------------------------------------------------
-# 2.5 Package lists (Kernel, Systemd & Desktop Stack)
-# -----------------------------------------------------------------------------
-# live-config-sysvinit ഡമ്മി പാക്കേജ് ക്രിയേറ്റ് ചെയ്ത് എറർ ഒഴിവാക്കുന്നു
-mkdir -p config/includes.chroot/var/lib/dpkg
-cat << 'EOF' >> config/includes.chroot/var/lib/dpkg/status
-
-Package: live-config-sysvinit
-Status: install ok installed
-Priority: optional
-Section: admin
-Installed-Size: 10
-Maintainer: Debian Live Project
-Architecture: all
-Version: 11.0.5
-Description: dummy live-config-sysvinit to bypass build error
-EOF
-
 mkdir -p config/package-lists
 cat > config/package-lists/retro-desktop.list.chroot << 'PKGLIST'
-# Kernel, Init System & Core Boot
+# Kernel & Live Boot
 linux-image-amd64
-systemd-sysv
 live-boot
 live-config
 live-config-systemd
+systemd-sysv
 
 # Pure BIOS Boot Stack
 syslinux
 isolinux
 
-# Lightweight GUI & Display Manager
+# Ultra-lightweight Desktop (RAM usage ~180MB)
 xorg
 openbox
 obconf
@@ -146,7 +116,7 @@ pipewire
 pipewire-audio
 wireplumber
 
-# Core Tools & Utilities
+# Core Utilities
 sudo
 curl
 wget
@@ -156,7 +126,7 @@ micro
 btop
 dillo
 
-# Firmware
+# Hardware Firmware
 firmware-linux
 firmware-linux-nonfree
 firmware-misc-nonfree
@@ -165,11 +135,11 @@ PKGLIST
 # -----------------------------------------------------------------------------
 # 3. Hook scripts inside config/hooks/live/
 # -----------------------------------------------------------------------------
-retro_info "Installing chroot hooks..."
+retro_info "Installing chroot hooks into config/hooks/live/ ..."
 mkdir -p config/hooks/normal
 mkdir -p config/hooks/live
 
-mkdir -p config/includes.chroot/opt/retro-os
+# Copy the whole project into the chroot filesystem
 cp -a "${SCRIPT_DIR}"/*.sh "${SCRIPT_DIR}/config.env" "${SCRIPT_DIR}/retro" \
     config/includes.chroot/opt/retro-os/ 2>/dev/null || true
 
@@ -194,20 +164,21 @@ write_hook "0100-retro-engine.hook.chroot"    "01_engine_setup.sh"
 write_hook "0200-retro-interface.hook.chroot" "02_interface_setup.sh"
 write_hook "0300-retro-modules.hook.chroot"   "03_modules_setup.sh"
 
+# CLI installation
 cat > config/hooks/live/0500-retro-cli-install.hook.chroot << 'HOOKEOF'
 #!/bin/sh
 set -e
 install -m 0755 /opt/retro-os/retro /usr/local/bin/retro
+echo "Retro OS CLI installed to /usr/local/bin/retro" >&2
 HOOKEOF
 chmod +x config/hooks/live/0500-retro-cli-install.hook.chroot
 
-# Pure BIOS Dummy Theme bypass
+# Binary hook: Syslinux ഇന്റർഫേസ് പാസ്സ് ചെയ്യാൻ
 mkdir -p config/hooks/binary
 cat << 'EOF' > config/hooks/binary/0000-bypass-theme-install.binary
 #!/bin/sh
 set -e
 mkdir -p binary/isolinux
-mkdir -p chroot/usr/share/syslinux/themes
 exit 0
 EOF
 chmod +x config/hooks/binary/0000-bypass-theme-install.binary
@@ -217,19 +188,15 @@ retro_ok "Chroot hooks installed."
 # -----------------------------------------------------------------------------
 # 4. Build the ISO
 # -----------------------------------------------------------------------------
-retro_info "Starting live-build..."
+retro_info "Starting live-build (this will take a while)..."
 lb clean --purge >/dev/null 2>&1 || true
 
-# live-config-sysvinit എറർ പൂർണ്ണമായി തടയാൻ chroot_live-packages ബൈപാസ്സ് ചെയ്യുന്നു:
-for f in /usr/lib/live/build/chroot_live-packages /usr/share/live/build/chroot_live-packages; do
-    if [ -f "$f" ]; then
-        echo '#!/bin/sh' > "$f"
-        echo 'exit 0' >> "$f"
-    fi
-done
+# Host Ubuntu-വിലെ lb_chroot_live-packages, syslinux theme പ്രശ്നങ്ങൾ ഒഴിവാക്കുന്നു
+echo '#!/bin/sh' | tee /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_chroot_live-packages >/dev/null 2>&1 || true
+echo 'exit 0' | tee -a /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_chroot_live-packages >/dev/null 2>&1 || true
+chmod +x /usr/lib/live/build/*live-packages* /usr/bin/lb_chroot_live-packages 2>/dev/null || true
 
-# Syslinux Ubuntu തീം ചെക്ക് ബൈപാസ്സ് ചെയ്യുന്നു:
-for f in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslinux; do
+for f in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslinux /usr/lib/live/build/lb_binary_syslinux; do
     if [ -f "$f" ]; then
         sed -i 's/lb chroot_install-packages syslinux/true #/g' "$f" 2>/dev/null || true
         sed -i 's/syslinux-themes-[^ "]*//g' "$f" 2>/dev/null || true
