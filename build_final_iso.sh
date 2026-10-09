@@ -65,7 +65,6 @@ lb config \
     --parent-mirror-bootstrap "http://deb.debian.org/debian/" \
     --parent-mirror-binary "http://deb.debian.org/debian/" \
     --security false \
-    --updates false \
     --archive-areas "main contrib non-free non-free-firmware" \
     --bootappend-live "boot=live components username=retro hostname=retro-os quiet splash" \
     --bootloader syslinux \
