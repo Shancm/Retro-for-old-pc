@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Retro OS v1.0 - build_final_iso.sh (Pure Legacy BIOS Edition)
+# Retro OS Lite - build_final_iso.sh (Pure Legacy BIOS Edition)
 # =============================================================================
 set -Eeuo pipefail
 
@@ -11,11 +11,11 @@ source "${SCRIPT_DIR}/config.env"
 trap 'retro_error "build_final_iso.sh failed at line ${LINENO} (exit ${?})."' ERR
 
 BUILD_DIR="${SCRIPT_DIR}/build"
-DISTRO="${RETRO_LB_DISTRO:-trixie}"       # Debian Testing "trixie"
+DISTRO="${RETRO_LB_DISTRO:-trixie}"
 ARCH="amd64"
 ISO_NAME="retro-os-${RETRO_OS_VERSION}-${ARCH}.iso"
 
-retro_info "=== Retro OS ISO Builder ==="
+retro_info "=== Retro OS Lite Builder (Pure Legacy BIOS) ==="
 retro_info "Distro: ${DISTRO} | Arch: ${ARCH} | Output: ${ISO_NAME}"
 
 # -----------------------------------------------------------------------------
@@ -46,13 +46,15 @@ apt-get install -y -qq \
 retro_ok "Host build dependencies installed."
 
 # -----------------------------------------------------------------------------
-# 2. Fresh build tree
+# 2. Fresh build tree & Clean Config
 # -----------------------------------------------------------------------------
 retro_info "Preparing clean build directory at ${BUILD_DIR} ..."
 rm -rf "${BUILD_DIR}"
 mkdir -p "${BUILD_DIR}"
 cd "${BUILD_DIR}"
 
+# Contents-amd64.gz 404 തടയാൻ --linux-packages "none" നൽകുന്നു.
+# Trixie security 404 ഒഴിവാക്കാൻ --security false നൽകുന്നു.
 lb config \
     --mode debian \
     --distribution trixie \
@@ -63,26 +65,35 @@ lb config \
     --parent-mirror-bootstrap "http://deb.debian.org/debian/" \
     --parent-mirror-binary "http://deb.debian.org/debian/" \
     --security false \
+    --updates false \
     --archive-areas "main contrib non-free non-free-firmware" \
     --bootappend-live "boot=live components username=retro hostname=retro-os quiet splash" \
     --bootloader syslinux \
-    --iso-application "Retro OS" \
+    --iso-application "Retro OS Lite" \
     --iso-volume "RETRO_OS" \
     --iso-publisher "Retro OS Project" \
-    --linux-packages "linux-image" \
-    --linux-flavours "amd64" \
+    --linux-packages "none" \
     --apt-recommends false \
     --cache false
-        
+
 retro_ok "live-build config generated."
 
 # -----------------------------------------------------------------------------
-# 2.5 Package lists (Core GUI & Retro OS base)
+# 2.5 Package lists (Kernel, Pure BIOS & Desktop Stack)
 # -----------------------------------------------------------------------------
 mkdir -p config/package-lists
 cat > config/package-lists/retro-desktop.list.chroot << 'PKGLIST'
+# Kernel & Live Core
+linux-image-amd64
+live-boot
+live-config
+live-config-systemd
+
+# Pure BIOS Boot Stack
 syslinux
 isolinux
+
+# Lightweight GUI & Display Manager
 xorg
 openbox
 obconf
@@ -92,16 +103,22 @@ feh
 picom
 lightdm
 lightdm-gtk-greeter
+
+# Lightweight File Manager & Terminal
 pcmanfm
 lxappearance
 kitty
 fonts-jetbrains-mono
 papirus-icon-theme
+
+# Network & Audio
 network-manager
 network-manager-gnome
 pipewire
 pipewire-audio
 wireplumber
+
+# Core Tools & Utilities
 sudo
 curl
 wget
@@ -110,6 +127,8 @@ nano
 micro
 btop
 dillo
+
+# Firmware
 firmware-linux
 firmware-linux-nonfree
 firmware-misc-nonfree
@@ -118,10 +137,11 @@ PKGLIST
 # -----------------------------------------------------------------------------
 # 3. Hook scripts inside config/hooks/live/
 # -----------------------------------------------------------------------------
-retro_info "Installing chroot hooks into config/hooks/live/ ..."
+retro_info "Installing chroot hooks..."
 mkdir -p config/hooks/normal
 mkdir -p config/hooks/live
 
+mkdir -p config/includes.chroot/opt/retro-os
 cp -a "${SCRIPT_DIR}"/*.sh "${SCRIPT_DIR}/config.env" "${SCRIPT_DIR}/retro" \
     config/includes.chroot/opt/retro-os/ 2>/dev/null || true
 
@@ -150,13 +170,10 @@ cat > config/hooks/live/0500-retro-cli-install.hook.chroot << 'HOOKEOF'
 #!/bin/sh
 set -e
 install -m 0755 /opt/retro-os/retro /usr/local/bin/retro
-echo "Retro OS CLI installed to /usr/local/bin/retro" >&2
 HOOKEOF
 chmod +x config/hooks/live/0500-retro-cli-install.hook.chroot
 
-# -----------------------------------------------------------------------------
-# Binary hook: Pure Legacy BIOS Dummy Bypass
-# -----------------------------------------------------------------------------
+# Pure BIOS Dummy Theme bypass
 mkdir -p config/hooks/binary
 cat << 'EOF' > config/hooks/binary/0000-bypass-theme-install.binary
 #!/bin/sh
@@ -167,14 +184,15 @@ exit 0
 EOF
 chmod +x config/hooks/binary/0000-bypass-theme-install.binary
 
-retro_ok "Chroot hooks installed (all sudo-free)."
+retro_ok "Chroot hooks installed (EFI/Calamares and isohybrid excluded)."
 
 # -----------------------------------------------------------------------------
 # 4. Build the ISO
 # -----------------------------------------------------------------------------
-retro_info "Starting live-build (this will take a while)..."
+retro_info "Starting live-build..."
 lb clean --purge >/dev/null 2>&1 || true
 
+# Ubuntu host syslinux theme check override
 for f in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslinux; do
     if [ -f "$f" ]; then
         sed -i 's/lb chroot_install-packages syslinux/true #/g' "$f" 2>/dev/null || true
@@ -191,6 +209,4 @@ if [[ -z "${found_iso}" ]]; then
 fi
 
 mv "${found_iso}" "${SCRIPT_DIR}/${ISO_NAME}"
-
 retro_ok "=== Build complete: ${SCRIPT_DIR}/${ISO_NAME} ==="
-retro_info "Verify pure bios boot with: file ${SCRIPT_DIR}/${ISO_NAME}"
