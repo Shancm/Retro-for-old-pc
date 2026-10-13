@@ -240,5 +240,9 @@ if [[ -z "${found_iso}" ]]; then
     retro_die "Build finished but no ISO was found in ${BUILD_DIR}."
 fi
 
+# Puppy Linux പോലെ പെൻഡ്രൈവിൽ നേരിട്ട് ബൂട്ട് ആകാൻ ISO-ലേക്ക് MBR inject ചെയ്യുന്നു:
+retro_info "Injecting MBR partition table (isohybrid)..."
+isohybrid "${found_iso}" || true
+
 mv "${found_iso}" "${SCRIPT_DIR}/${ISO_NAME}"
 retro_ok "=== Build complete: ${SCRIPT_DIR}/${ISO_NAME} ==="
