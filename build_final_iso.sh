@@ -190,65 +190,56 @@ chmod +x config/hooks/binary/0000-bypass-theme-install.binary
 retro_ok "Chroot hooks installed."
 
 # -----------------------------------------------------------------------------
-# 4. Build the ISO
+# 4. Bootloader setup & Build
 # -----------------------------------------------------------------------------
-retro_info "Starting live-build (this will take a while)..."
-lb clean --purge >/dev/null 2>&1 || true
-
-# lb_chroot_live-packages ബൈപാസ്സ് ചെയ്യുന്നു:
-echo '#!/bin/sh' | tee /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_chroot_live-packages >/dev/null 2>&1 || true
-echo 'exit 0' | tee -a /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_chroot_live-packages >/dev/null 2>&1 || true
-chmod +x /usr/lib/live/build/*live-packages* /usr/bin/lb_chroot_live-packages 2>/dev/null || true
-
-# Ubuntu host syslinux theme & bootlogo തടസ്സങ്ങൾ ഒഴിവാക്കുന്നു:
-for f in /usr/lib/live/build/binary_syslinux /usr/share/live/build/binary_syslinux /usr/lib/live/build/lb_binary_syslinux; do
-    if [ -f "$f" ]; then
-        sed -i 's/lb chroot_install-packages syslinux/true #/g' "$f" 2>/dev/null || true
-        sed -i 's/syslinux-themes-[^ "]*//g' "$f" 2>/dev/null || true
-        sed -i 's/gfxboot-theme-[^ "]*//g' "$f" 2>/dev/null || true
-        sed -i 's/.*bootlogo.*/true # bypass bootlogo/g' "$f" 2>/dev/null || true
-    fi
-done
-
-# live-build ഔദ്യോഗികമായി ബൂട്ട്‌ലോഡർ ഫയലുകൾ എടുക്കുന്ന config/bootloaders/isolinux ഡയറക്ടറി ഉണ്ടാക്കുന്നു
+# ആവശ്യമായ ഡയറക്ടറികൾ നിർമ്മിക്കുന്നു
 mkdir -p "${BUILD_DIR}/config/bootloaders/isolinux"
 mkdir -p "${BUILD_DIR}/binary/isolinux"
 mkdir -p "${BUILD_DIR}/binary/boot/isolinux"
 
-# isolinux.bin, .c32 മൊഡ്യൂളുകൾ കൃത്യമായി എല്ലാ പാത്തിലേക്കും പകർന്നു നൽകുന്നു:
-ISOLINUX_SRC="/usr/lib/ISOLINUX/isolinux.bin"
-[ ! -f "$ISOLINUX_SRC" ] && ISOLINUX_SRC="$(find /usr -name "isolinux.bin" 2>/dev/null | head -n1)"
-
-if [ -n "$ISOLINUX_SRC" ]; then
-    cp -f "$ISOLINUX_SRC" "${BUILD_DIR}/config/bootloaders/isolinux/" 2>/dev/null || true
-    cp -f "$ISOLINUX_SRC" "${BUILD_DIR}/binary/isolinux/" 2>/dev/null || true
-    cp -f "$ISOLINUX_SRC" "${BUILD_DIR}/binary/boot/isolinux/" 2>/dev/null || true
-fi
-
-cp -f /usr/lib/syslinux/modules/bios/* "${BUILD_DIR}/config/bootloaders/isolinux/" 2>/dev/null || true
+# ISOLINUX ബൈനറികളും എല്ലാ COM32 മൊഡ്യൂളുകളും കോപ്പി ചെയ്യുന്നു
+cp -f /usr/lib/ISOLINUX/isolinux.bin "${BUILD_DIR}/binary/isolinux/" 2>/dev/null || true
 cp -f /usr/lib/syslinux/modules/bios/* "${BUILD_DIR}/binary/isolinux/" 2>/dev/null || true
-cp -f /usr/lib/syslinux/modules/bios/* "${BUILD_DIR}/binary/boot/isolinux/" 2>/dev/null || true
-
-touch "${BUILD_DIR}/config/bootloaders/isolinux/bootlogo"
+cp -f /usr/lib/ISOLINUX/isolinux.bin "${BUILD_DIR}/config/bootloaders/isolinux/" 2>/dev/null || true
+cp -f /usr/lib/syslinux/modules/bios/* "${BUILD_DIR}/config/bootloaders/isolinux/" 2>/dev/null || true
 touch "${BUILD_DIR}/binary/isolinux/bootlogo"
-touch "${BUILD_DIR}/binary/boot/isolinux/bootlogo"
 
-# lb build റൺ ചെയ്യുന്നു
+# isolinux.cfg കോൺഫിഗറേഷൻ നിർമ്മിക്കുന്നു
+cat << 'EOF' > "${BUILD_DIR}/binary/isolinux/isolinux.cfg"
+UI vesamenu.c32
+PROMPT 0
+TIMEOUT 50
+
+MENU TITLE Retro OS Lite (Legacy BIOS)
+
+LABEL live
+  MENU LABEL Boot Retro OS Lite
+  MENU DEFAULT
+  LINUX /live/vmlinuz
+  INITRD /live/initrd.img
+  APPEND boot=live persistence quiet components
+
+LABEL failsafe
+  MENU LABEL Boot Retro OS Lite (Fail-safe)
+  LINUX /live/vmlinuz
+  INITRD /live/initrd.img
+  APPEND boot=live components memtest noapic noapm nodma nomce nolapic nomodeset nosmp nospectre_v2 nospec_store_bypass_disable
+EOF
+
+# എല്ലാ പാത്തുകളിലേക്കും കോൺഫിഗറേഷൻ ഉറപ്പാക്കുന്നു
+cp -f "${BUILD_DIR}/binary/isolinux/isolinux.cfg" "${BUILD_DIR}/config/bootloaders/isolinux/isolinux.cfg"
+cp -f "${BUILD_DIR}/binary/isolinux/isolinux.cfg" "${BUILD_DIR}/binary/boot/isolinux/isolinux.cfg"
+
+# ISO ബിൽഡ് ചെയ്യുന്നു
+retro_info "Starting live-build..."
 lb build 2>&1 | tee -a "${RETRO_LOG_FILE}"
 
-# chroot-ൽ നിന്ന് യഥാർത്ഥ vmlinuz, initrd എന്നിവ live/ ഫോൾഡറിലേക്ക് കോപ്പി ചെയ്യുന്നു
-retro_info "Extracting kernel and initrd into binary/live..."
-mkdir -p "${BUILD_DIR}/binary/live"
-cp -f $(ls -t "${BUILD_DIR}"/chroot/boot/vmlinuz-* 2>/dev/null | head -n1) "${BUILD_DIR}/binary/live/vmlinuz" 2>/dev/null || true
-cp -f $(ls -t "${BUILD_DIR}"/chroot/boot/initrd.img-* 2>/dev/null | head -n1) "${BUILD_DIR}/binary/live/initrd.img" 2>/dev/null || true
-
-# ISO കണ്ടെത്തുന്നു
 found_iso="$(find "${BUILD_DIR}" -maxdepth 1 -name '*.iso' | head -n1)"
 if [[ -z "${found_iso}" ]]; then
     retro_die "Build finished but no ISO was found in ${BUILD_DIR}."
 fi
 
-# Puppy Linux മോഡൽ MBR ബൂട്ട് സെക്ടർ inject ചെയ്യുന്നു
+# Puppy Linux മോഡൽ MBR ടേബിൾ ഇൻജക്റ്റ് ചെയ്യുന്നു (Hybrid Boot)
 retro_info "Injecting MBR partition table (isohybrid)..."
 isohybrid "${found_iso}" || true
 
