@@ -196,6 +196,11 @@ echo '#!/bin/sh' | tee /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_c
 echo 'exit 0' | tee -a /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_chroot_live-packages >/dev/null 2>&1 || true
 chmod +x /usr/lib/live/build/*live-packages* /usr/bin/lb_chroot_live-packages 2>/dev/null || true
 
+# lb_binary_syslinux ക്രാഷ് ആകുന്നത് തടയാൻ dummy സ്ക്രിപ്റ്റ് നൽകുന്നു
+echo '#!/bin/sh' | tee /usr/lib/live/build/lb_binary_syslinux /usr/bin/lb_binary_syslinux >/dev/null 2>&1 || true
+echo 'exit 0' | tee -a /usr/lib/live/build/lb_binary_syslinux /usr/bin/lb_binary_syslinux >/dev/null 2>&1 || true
+chmod +x /usr/lib/live/build/*syslinux* /usr/bin/lb_binary_syslinux 2>/dev/null || true
+
 # ആവശ്യമായ ഡയറക്ടറികൾ നിർമ്മിക്കുന്നു
 mkdir -p "${BUILD_DIR}/config/bootloaders/isolinux"
 mkdir -p "${BUILD_DIR}/binary/isolinux"
