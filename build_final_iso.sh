@@ -64,12 +64,13 @@ lb config \
     --parent-mirror-binary "http://deb.debian.org/debian/" \
     --security false \
     --archive-areas "main contrib non-free non-free-firmware" \
-    --bootappend-live "boot=live components username=retro hostname=retro-os quiet splash" \
+    --bootappend-live "boot=live components username=retro hostname=retro-os persistence quiet splash" \
     --bootloader syslinux \
     --iso-application "Retro OS Lite" \
     --iso-volume "RETRO_OS" \
     --iso-publisher "Retro OS Project" \
-    --linux-packages "none" \
+    --linux-packages "linux-image" \
+    --linux-flavours "amd64" \
     --apt-recommends true \
     --cache true
 
