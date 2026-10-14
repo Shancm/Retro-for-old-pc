@@ -239,9 +239,40 @@ EOF
 cp -f "${BUILD_DIR}/binary/isolinux/isolinux.cfg" "${BUILD_DIR}/config/bootloaders/isolinux/isolinux.cfg"
 cp -f "${BUILD_DIR}/binary/isolinux/isolinux.cfg" "${BUILD_DIR}/binary/boot/isolinux/isolinux.cfg"
 
-# ISO ബിൽഡ് ചെയ്യുന്നു
-retro_info "Starting live-build..."
-lb build 2>&1 | tee -a "${RETRO_LOG_FILE}"
+# ISO ബിൽഡ് ഘട്ടങ്ങൾ ക്രമമായി റൺ ചെയ്യുന്നു
+retro_info "Starting live-build bootstrap & chroot..."
+lb bootstrap 2>&1 | tee -a "${RETRO_LOG_FILE}"
+lb chroot 2>&1 | tee -a "${RETRO_LOG_FILE}"
+
+# -----------------------------------------------------------------------------
+# Kernel & Initrd live/ ഫോൾഡറിലേക്ക് കോപ്പി ചെയ്യുന്നു
+# -----------------------------------------------------------------------------
+retro_info "Extracting kernel and initrd from chroot..."
+mkdir -p "${BUILD_DIR}/binary/live"
+
+if ls "${BUILD_DIR}"/chroot/boot/vmlinuz-* 1> /dev/null 2>&1; then
+    latest_kernel="$(ls -t "${BUILD_DIR}"/chroot/boot/vmlinuz-* | head -n1)"
+    latest_initrd="$(ls -t "${BUILD_DIR}"/chroot/boot/initrd.img-* | head -n1)"
+    cp -vf "${latest_kernel}" "${BUILD_DIR}/binary/live/vmlinuz"
+    cp -vf "${latest_initrd}" "${BUILD_DIR}/binary/live/initrd.img"
+    retro_ok "Kernel and initrd copied successfully to binary/live/"
+else
+    retro_die "Could not find kernel in chroot/boot!"
+fi
+
+# ISOLINUX കോൺഫിഗറേഷൻ ഉറപ്പാക്കുന്നു
+mkdir -p "${BUILD_DIR}/binary/isolinux" "${BUILD_DIR}/binary/boot/isolinux"
+cp -f /usr/lib/ISOLINUX/isolinux.bin "${BUILD_DIR}/binary/isolinux/" 2>/dev/null || true
+cp -f /usr/lib/syslinux/modules/bios/* "${BUILD_DIR}/binary/isolinux/" 2>/dev/null || true
+touch "${BUILD_DIR}/binary/isolinux/bootlogo"
+cp -f "${BUILD_DIR}/binary/isolinux/isolinux.cfg" "${BUILD_DIR}/binary/boot/isolinux/isolinux.cfg"
+
+# ബൈനറി ഫയൽസിസ്റ്റവും ISO-യും നിർമ്മിക്കുന്നു
+retro_info "Building filesystem and generating final ISO..."
+lb binary_rootfs 2>&1 | tee -a "${RETRO_LOG_FILE}"
+lb binary_manifest 2>&1 | tee -a "${RETRO_LOG_FILE}"
+lb binary_iso 2>&1 | tee -a "${RETRO_LOG_FILE}" || lb binary 2>&1 | tee -a "${RETRO_LOG_FILE}"
+
 
 found_iso="$(find "${BUILD_DIR}" -maxdepth 1 -name '*.iso' | head -n1)"
 if [[ -z "${found_iso}" ]]; then
