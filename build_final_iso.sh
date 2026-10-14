@@ -69,8 +69,7 @@ lb config \
     --iso-application "Retro OS Lite" \
     --iso-volume "RETRO_OS" \
     --iso-publisher "Retro OS Project" \
-    --linux-packages "linux-image" \
-    --linux-flavours "amd64" \
+    --linux-packages "none" \
     --apt-recommends true \
     --cache true
 
@@ -234,14 +233,22 @@ touch "${BUILD_DIR}/config/bootloaders/isolinux/bootlogo"
 touch "${BUILD_DIR}/binary/isolinux/bootlogo"
 touch "${BUILD_DIR}/binary/boot/isolinux/bootlogo"
 
+# lb build റൺ ചെയ്യുന്നു
 lb build 2>&1 | tee -a "${RETRO_LOG_FILE}"
 
+# chroot-ൽ നിന്ന് യഥാർത്ഥ vmlinuz, initrd എന്നിവ live/ ഫോൾഡറിലേക്ക് കോപ്പി ചെയ്യുന്നു
+retro_info "Extracting kernel and initrd into binary/live..."
+mkdir -p "${BUILD_DIR}/binary/live"
+cp -f $(ls -t "${BUILD_DIR}"/chroot/boot/vmlinuz-* 2>/dev/null | head -n1) "${BUILD_DIR}/binary/live/vmlinuz" 2>/dev/null || true
+cp -f $(ls -t "${BUILD_DIR}"/chroot/boot/initrd.img-* 2>/dev/null | head -n1) "${BUILD_DIR}/binary/live/initrd.img" 2>/dev/null || true
+
+# ISO കണ്ടെത്തുന്നു
 found_iso="$(find "${BUILD_DIR}" -maxdepth 1 -name '*.iso' | head -n1)"
 if [[ -z "${found_iso}" ]]; then
     retro_die "Build finished but no ISO was found in ${BUILD_DIR}."
 fi
 
-# Puppy Linux പോലെ പെൻഡ്രൈവിൽ നേരിട്ട് ബൂട്ട് ആകാൻ ISO-ലേക്ക് MBR inject ചെയ്യുന്നു:
+# Puppy Linux മോഡൽ MBR ബൂട്ട് സെക്ടർ inject ചെയ്യുന്നു
 retro_info "Injecting MBR partition table (isohybrid)..."
 isohybrid "${found_iso}" || true
 
