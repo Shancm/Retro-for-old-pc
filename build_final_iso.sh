@@ -38,6 +38,7 @@ apt-get install -y -qq \
     xorriso \
     dosfstools \
     squashfs-tools \
+    liblzo2-2 \
     isolinux \
     syslinux \
     syslinux-common \
@@ -267,12 +268,9 @@ cp -f /usr/lib/syslinux/modules/bios/* "${BUILD_DIR}/binary/isolinux/" 2>/dev/nu
 touch "${BUILD_DIR}/binary/isolinux/bootlogo"
 cp -f "${BUILD_DIR}/binary/isolinux/isolinux.cfg" "${BUILD_DIR}/binary/boot/isolinux/isolinux.cfg"
 
-# ബൈനറി ഫയൽസിസ്റ്റവും ISO-യും നിർമ്മിക്കുന്നു
-retro_info "Building filesystem and generating final ISO..."
-lb binary_rootfs 2>&1 | tee -a "${RETRO_LOG_FILE}"
-lb binary_manifest 2>&1 | tee -a "${RETRO_LOG_FILE}"
-lb binary_iso 2>&1 | tee -a "${RETRO_LOG_FILE}" || lb binary 2>&1 | tee -a "${RETRO_LOG_FILE}"
-
+# ബൈനറി ഘട്ടങ്ങളും ISO നിർമ്മാണവും പൂർത്തിയാക്കുന്നു
+retro_info "Building live system and generating final ISO..."
+lb binary 2>&1 | tee -a "${RETRO_LOG_FILE}"
 
 found_iso="$(find "${BUILD_DIR}" -maxdepth 1 -name '*.iso' | head -n1)"
 if [[ -z "${found_iso}" ]]; then
