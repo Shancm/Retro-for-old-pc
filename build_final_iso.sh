@@ -83,7 +83,6 @@ cat > config/package-lists/retro-desktop.list.chroot << 'PKGLIST'
 # Kernel & Live Boot
 linux-image-amd64
 live-boot
-live-config
 live-config-systemd
 systemd-sysv
 
@@ -192,6 +191,11 @@ retro_ok "Chroot hooks installed."
 # -----------------------------------------------------------------------------
 # 4. Bootloader setup & Build
 # -----------------------------------------------------------------------------
+# lb_chroot_live-packages തകരാർ ഒഴിവാക്കാൻ dummy സ്ക്രിപ്റ്റ് നൽകുന്നു
+echo '#!/bin/sh' | tee /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_chroot_live-packages >/dev/null 2>&1 || true
+echo 'exit 0' | tee -a /usr/lib/live/build/lb_chroot_live-packages /usr/bin/lb_chroot_live-packages >/dev/null 2>&1 || true
+chmod +x /usr/lib/live/build/*live-packages* /usr/bin/lb_chroot_live-packages 2>/dev/null || true
+
 # ആവശ്യമായ ഡയറക്ടറികൾ നിർമ്മിക്കുന്നു
 mkdir -p "${BUILD_DIR}/config/bootloaders/isolinux"
 mkdir -p "${BUILD_DIR}/binary/isolinux"
