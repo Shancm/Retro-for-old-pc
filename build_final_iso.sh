@@ -70,7 +70,7 @@ lb config \
     --iso-volume "RETRO_OS" \
     --iso-publisher "Retro OS Project" \
     --linux-packages "none" \
-    --apt-recommends true \
+    --apt-recommends false \
     --cache true
 
 retro_ok "live-build config generated."
