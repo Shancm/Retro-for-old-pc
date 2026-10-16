@@ -174,42 +174,34 @@ HOOKEOF
 chmod +x config/hooks/live/0500-retro-cli-install.hook.chroot
 
 # -----------------------------------------------------------------------------
-# Auto-login & Credentials Setup Hook
+# Clean LightDM Autologin Hook (live-config safe)
 # -----------------------------------------------------------------------------
 cat > config/hooks/live/0050-setup-autologin.hook.chroot << 'AUTOHOOK'
 #!/bin/sh
 set -e
 
-# retro യൂസർ നിലവിലില്ലെങ്കിൽ ഉണ്ടാക്കുക
-if ! id "retro" >/dev/null 2>&1; then
-    useradd -m -s /bin/bash -u 1000 retro
-fi
-
-# യൂസറെ ആവശ്യമായ ഗ്രൂപ്പുകളിൽ ചേർക്കുക
-usermod -aG sudo,audio,video,input,plugdev,netdev retro || true
-
-# ബാക്കപ്പ് പാസ്‌വേഡ് നിശ്ചയിക്കുന്നു (retro : retro)
-echo "retro:retro" | chpasswd
-
-# ഓട്ടോലോഗിൻ ഗ്രൂപ്പുകൾ ഉണ്ടാക്കി യൂസറെ ചേർക്കുന്നു
-groupadd -r autologin 2>/dev/null || true
-groupadd -r nopasswdlogin 2>/dev/null || true
-usermod -aG autologin,nopasswdlogin retro || true
-
-# LightDM ഓട്ടോ-ലോഗിൻ കോൺഫിഗറേഷൻ
+# ലൈറ്റ്ഡിഎം കോൺഫിഗറേഷനിൽ നേരിട്ട് ആക്സസ് നൽകുന്നു
 mkdir -p /etc/lightdm/lightdm.conf.d
 cat << 'AUTOCONF' > /etc/lightdm/lightdm.conf.d/autologin.conf
 [Seat:*]
 autologin-user=retro
 autologin-user-timeout=0
+user-session=openbox
 pam-service=lightdm-autologin
 pam-autologin-service=lightdm-autologin
 AUTOCONF
 
-# sudo-യ്ക്ക് പാസ്‌വേഡ് ചോദിക്കാതിരിക്കാൻ
+# udevadm ലോക്കപ്പ് ആവാതിരിക്കാൻ സിസ്റ്റംഡ് വർക്കർമാർക്ക് നിയന്ത്രണം നൽകുന്നു
+mkdir -p /etc/systemd/system/systemd-udevd.service.d
+cat << 'UDEVCONF' > /etc/systemd/system/systemd-udevd.service.d/override.conf
+[Service]
+TimeoutSec=60
+UDEVCONF
+
+# sudo-യ്ക്ക് പാസ്‌വേഡ് ഒഴിവാക്കുന്നു
 mkdir -p /etc/sudoers.d
-echo "retro ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/retro
-chmod 0440 /etc/sudoers.d/retro
+echo "ALL ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/retro-nopasswd
+chmod 0440 /etc/sudoers.d/retro-nopasswd
 
 AUTOHOOK
 chmod +x config/hooks/live/0050-setup-autologin.hook.chroot
@@ -268,13 +260,13 @@ LABEL live
   MENU DEFAULT
   LINUX /live/vmlinuz
   INITRD /live/initrd.img
-  APPEND boot=live components username=retro user-fullname=RetroOS autologin persistence quiet splash
+  APPEND boot=live components username=retro user-default-groups=sudo,audio,video,input,plugdev,netdev autologin persistence quiet splash nowatchdog udev.children_max=1
 
 LABEL failsafe
   MENU LABEL Boot Retro OS Lite (Fail-safe)
   LINUX /live/vmlinuz
   INITRD /live/initrd.img
-  APPEND boot=live components memtest noapic noapm nodma nomce nolapic nomodeset nosmp nospectre_v2 nospec_store_bypass_disable
+  APPEND boot=live components username=retro autologin memtest noapic noapm nodma nomce nolapic nomodeset nosmp nospectre_v2 nospec_store_bypass_disable nowatchdog
 EOF
 
 # എല്ലാ പാത്തുകളിലേക്കും കോൺഫിഗറേഷൻ ഉറപ്പാക്കുന്നു
