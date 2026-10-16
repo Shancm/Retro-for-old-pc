@@ -250,8 +250,8 @@ touch "${BUILD_DIR}/binary/isolinux/bootlogo"
 # isolinux.cfg കോൺഫിഗറേഷൻ നിർമ്മിക്കുന്നു
 cat << 'EOF' > "${BUILD_DIR}/binary/isolinux/isolinux.cfg"
 UI vesamenu.c32
-PROMPT 0
-TIMEOUT 50
+PROMPT 1
+TIMEOUT 100
 
 MENU TITLE Retro OS Lite (Legacy BIOS)
 
@@ -277,6 +277,36 @@ cp -f "${BUILD_DIR}/binary/isolinux/isolinux.cfg" "${BUILD_DIR}/binary/boot/isol
 retro_info "Starting live-build bootstrap & chroot..."
 lb bootstrap 2>&1 | tee -a "${RETRO_LOG_FILE}"
 lb chroot 2>&1 | tee -a "${RETRO_LOG_FILE}"
+
+retro_info "Injecting permanent password bypass into rootfs..."
+
+# 1. retro യൂസറെ ഉണ്ടാക്കുന്നു
+chroot "${BUILD_DIR}/chroot" useradd -m -s /bin/bash -u 1000 retro 2>/dev/null || true
+
+# 2. ഷാഡോ ഫയലിലെ ലോക്ക് (!) നേരിട്ട് മായ്ച്ചു കളയുന്നു (Password Blank ആക്കുന്നു)
+sed -i 's/^retro:[^:]*:/retro::/' "${BUILD_DIR}/chroot/etc/shadow"
+sed -i 's/^root:[^:]*:/root::/' "${BUILD_DIR}/chroot/etc/shadow"
+
+# 3. 'retro' എന്ന പാസ്‌വേഡ് സെറ്റ് ചെയ്യുന്നു
+chroot "${BUILD_DIR}/chroot" sh -c "echo 'retro:retro' | chpasswd"
+chroot "${BUILD_DIR}/chroot" sh -c "echo 'root:retro' | chpasswd"
+
+# 4. LightDM-ൽ PAM പാസ്‌വേഡ് പരിശോധന പൂർണ്ണമായി ഒഴിവാക്കുന്നു (Autologin Bypass)
+mkdir -p "${BUILD_DIR}/chroot/etc/pam.d"
+cat << 'PAMEOF' > "${BUILD_DIR}/chroot/etc/pam.d/lightdm-autologin"
+#%PAM-1.0
+auth        sufficient  pam_permit.so
+account     sufficient  pam_permit.so
+password    sufficient  pam_permit.so
+session     sufficient  pam_permit.so
+PAMEOF
+
+# 5. Sudo-യ്ക്ക് പൂർണ്ണ അനുമതി നൽകുന്നു
+mkdir -p "${BUILD_DIR}/chroot/etc/sudoers.d"
+echo "ALL ALL=(ALL) NOPASSWD: ALL" > "${BUILD_DIR}/chroot/etc/sudoers.d/00-retro-nopasswd"
+chmod 0440 "${BUILD_DIR}/chroot/etc/sudoers.d/00-retro-nopasswd"
+
+retro_ok "Rootfs shadow file unlocked and PAM bypass configured."
 
 # -----------------------------------------------------------------------------
 # Kernel & Initrd live/ ഫോൾഡറിലേക്ക് കോപ്പി ചെയ്യുന്നു
