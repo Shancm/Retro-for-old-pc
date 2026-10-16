@@ -173,6 +173,47 @@ echo "Retro OS CLI installed to /usr/local/bin/retro" >&2
 HOOKEOF
 chmod +x config/hooks/live/0500-retro-cli-install.hook.chroot
 
+# -----------------------------------------------------------------------------
+# Auto-login & Credentials Setup Hook
+# -----------------------------------------------------------------------------
+cat > config/hooks/live/0050-setup-autologin.hook.chroot << 'AUTOHOOK'
+#!/bin/sh
+set -e
+
+# retro യൂസർ നിലവിലില്ലെങ്കിൽ ഉണ്ടാക്കുക
+if ! id "retro" >/dev/null 2>&1; then
+    useradd -m -s /bin/bash -u 1000 retro
+fi
+
+# യൂസറെ ആവശ്യമായ ഗ്രൂപ്പുകളിൽ ചേർക്കുക
+usermod -aG sudo,audio,video,input,plugdev,netdev retro || true
+
+# ബാക്കപ്പ് പാസ്‌വേഡ് നിശ്ചയിക്കുന്നു (retro : retro)
+echo "retro:retro" | chpasswd
+
+# ഓട്ടോലോഗിൻ ഗ്രൂപ്പുകൾ ഉണ്ടാക്കി യൂസറെ ചേർക്കുന്നു
+groupadd -r autologin 2>/dev/null || true
+groupadd -r nopasswdlogin 2>/dev/null || true
+usermod -aG autologin,nopasswdlogin retro || true
+
+# LightDM ഓട്ടോ-ലോഗിൻ കോൺഫിഗറേഷൻ
+mkdir -p /etc/lightdm/lightdm.conf.d
+cat << 'AUTOCONF' > /etc/lightdm/lightdm.conf.d/autologin.conf
+[Seat:*]
+autologin-user=retro
+autologin-user-timeout=0
+pam-service=lightdm-autologin
+pam-autologin-service=lightdm-autologin
+AUTOCONF
+
+# sudo-യ്ക്ക് പാസ്‌വേഡ് ചോദിക്കാതിരിക്കാൻ
+mkdir -p /etc/sudoers.d
+echo "retro ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/retro
+chmod 0440 /etc/sudoers.d/retro
+
+AUTOHOOK
+chmod +x config/hooks/live/0050-setup-autologin.hook.chroot
+
 # Pure BIOS Dummy Theme & Isolinux binary hook
 mkdir -p config/hooks/binary
 cat << 'EOF' > config/hooks/binary/0000-bypass-theme-install.binary
@@ -227,7 +268,7 @@ LABEL live
   MENU DEFAULT
   LINUX /live/vmlinuz
   INITRD /live/initrd.img
-  APPEND boot=live persistence quiet components
+  APPEND boot=live components username=retro user-fullname=RetroOS autologin persistence quiet splash
 
 LABEL failsafe
   MENU LABEL Boot Retro OS Lite (Fail-safe)
