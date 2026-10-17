@@ -68,9 +68,15 @@ EOF
 mkdir -p "${SKEL_DIR}/.config/openbox"
 cat << 'EOF' > "${SKEL_DIR}/.config/openbox/autostart"
 feh --bg-fill /usr/share/backgrounds/retro-os/wallpaper.png &
+pcmanfm --desktop &
 picom -b &
 tint2 &
 EOF
+
+# ഡെസ്ക്ടോപ്പ് ഫോൾഡറിലേക്ക് ഷോർട്ട്കട്ടുകൾ നൽകുന്നു
+mkdir -p "${SKEL_DIR}/Desktop"
+cp -a /usr/share/applications/*.desktop "${SKEL_DIR}/Desktop/" 2>/dev/null || true
+chmod +x "${SKEL_DIR}/Desktop/"*.desktop 2>/dev/null || true
 
 # 6. ഷോർട്ട്കട്ടുകൾ
 cat << 'EOF' > "${SKEL_DIR}/.config/openbox/rc.xml"
@@ -86,6 +92,59 @@ cat << 'EOF' > "${SKEL_DIR}/.config/openbox/rc.xml"
   </keyboard>
 </openbox_config>
 EOF
+
+# -----------------------------------------------------------------------------
+# Openbox Right-Click Menu
+# -----------------------------------------------------------------------------
+mkdir -p "${SKEL_DIR}/.config/openbox"
+cat << 'EOF' > "${SKEL_DIR}/.config/openbox/menu.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="Openbox 3">
+    <item label="Terminal"><action name="Execute"><command>kitty</command></action></item>
+    <item label="Web Browser"><action name="Execute"><command>midori</command></action></item>
+    <item label="File Manager"><action name="Execute"><command>pcmanfm</command></action></item>
+    <separator />
+    <menu id="cyber-tools" label="Security Tools">
+      <item label="Nmap"><action name="Execute"><command>kitty -e nmap</command></action></item>
+      <item label="SQLMap"><action name="Execute"><command>kitty -e sqlmap</command></action></item>
+      <item label="Hydra"><action name="Execute"><command>kitty -e hydra</command></action></item>
+      <item label="John"><action name="Execute"><command>kitty -e john</command></action></item>
+      <item label="Nikto"><action name="Execute"><command>kitty -e nikto</command></action></item>
+      <item label="Wifite"><action name="Execute"><command>kitty -e sudo wifite</command></action></item>
+    </menu>
+    <separator />
+    <item label="Exit"><action name="Exit" /></item>
+  </menu>
+</openbox_menu>
+EOF
+
+# -----------------------------------------------------------------------------
+# Security Tools Desktop Entries (Rofi & Desktop Support)
+# -----------------------------------------------------------------------------
+mkdir -p /usr/share/applications
+
+make_tool_entry() {
+    local name="$1"
+    local cmd="$2"
+    local icon="$3"
+    cat << EOF > "/usr/share/applications/${name}.desktop"
+[Desktop Entry]
+Name=${name}
+Exec=kitty -e ${cmd}
+Icon=${icon}
+Terminal=false
+Type=Application
+Categories=Utility;System;
+EOF
+}
+
+make_tool_entry "Nmap Network Scanner" "nmap" "network-wired"
+make_tool_entry "SQLMap" "sqlmap" "utilities-terminal"
+make_tool_entry "Hydra" "hydra" "utilities-terminal"
+make_tool_entry "John The Ripper" "john" "utilities-terminal"
+make_tool_entry "Nikto" "nikto" "utilities-terminal"
+make_tool_entry "Wifite" "wifite" "network-wireless"
 
 # 7. യൂസർ പെർമിഷനുകൾ ശരിയാക്കൽ
 if [[ -d "${SKEL_DIR}" ]]; then
