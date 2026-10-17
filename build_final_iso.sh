@@ -137,7 +137,7 @@ python3
 python3-pip
 nodejs
 geany
-midori
+badwolf
 mpv
 yt-dlp
 
