@@ -124,7 +124,13 @@ git
 nano
 micro
 btop
-dillo
+python3
+python3-pip
+nodejs
+geany
+midori
+mpv
+yt-dlp
 
 # Hardware Firmware
 firmware-linux
@@ -174,7 +180,7 @@ HOOKEOF
 chmod +x config/hooks/live/0500-retro-cli-install.hook.chroot
 
 # -----------------------------------------------------------------------------
-# Clean LightDM Autologin Hook (live-config safe)
+# 3.1Clean LightDM Autologin Hook (live-config safe)
 # -----------------------------------------------------------------------------
 cat > config/hooks/live/0050-setup-autologin.hook.chroot << 'AUTOHOOK'
 #!/bin/sh
