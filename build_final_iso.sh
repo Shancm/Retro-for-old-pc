@@ -102,6 +102,15 @@ picom
 lightdm
 lightdm-gtk-greeter
 
+# Security & Network Auditing Stack
+hydra
+john
+nikto
+sqlmap
+wifite
+aircrack-ng
+wireless-tools
+
 # Lightweight File Manager & Terminal
 pcmanfm
 lxappearance
