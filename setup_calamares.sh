@@ -138,6 +138,10 @@ retro_ok "unpackfs.conf and path compatibility service configured."
 # -----------------------------------------------------------------------------
 # 4. Branding: Retro OS identity + dark theme metadata
 # -----------------------------------------------------------------------------
+# Calamares-ലേക്ക് Retro Main Logo നൽകുന്നു
+mkdir -p /etc/calamares/branding/retro-os
+cp -f /usr/share/backgrounds/retro-os/retro_logo.png /etc/calamares/branding/retro-os/logo.png 2>/dev/null || true
+
 retro_info "Writing Calamares branding (Retro OS dark theme)..."
 
 cat > /etc/calamares/branding/retro-os/branding.desc << BRANDINGDESC
@@ -162,7 +166,7 @@ strings:
 # images:
 #    productLogo:          "logo.png"
 #    productIcon:           "logo.png"
-#    productWelcome:        "welcome.png"
+#    productWelcome:        "logo.png"
 # slideshow:                "show.qml"
 
 style:
