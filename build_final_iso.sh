@@ -137,7 +137,7 @@ python3
 python3-pip
 nodejs
 geany
-badwolf
+firefox-esr
 mpv
 yt-dlp
 
