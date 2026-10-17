@@ -171,6 +171,21 @@ fi
 chmod +x config/includes.chroot/opt/retro-os/*.sh 2>/dev/null || true
 chmod +x config/includes.chroot/opt/retro-os/retro 2>/dev/null || true
 
+write_hook() {
+    local hook_name="$1"
+    local target_script="$2"
+    cat > "config/hooks/normal/${hook_name}" << HOOK
+#!/bin/sh
+set -e
+export RETRO_CHROOT_BUILD=1
+chmod +x /opt/retro-os/${target_script}
+/opt/retro-os/${target_script}
+HOOK
+    chmod +x "config/hooks/normal/${hook_name}"
+    cp -a "config/hooks/normal/${hook_name}" "config/hooks/live/${hook_name}"
+}
+
+
 write_hook "0100-retro-engine.hook.chroot"    "01_engine_setup.sh"
 write_hook "0200-retro-interface.hook.chroot" "02_interface_setup.sh"
 write_hook "0300-retro-modules.hook.chroot"   "03_modules_setup.sh"
