@@ -205,12 +205,12 @@ mkdir -p /etc/sudoers.d
 echo "ALL ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/retro-nopasswd
 chmod 0440 /etc/sudoers.d/retro-nopasswd
 
-AUTOHOOK
-chmod +x config/hooks/live/0050-setup-autologin.hook.chroot
-
 # യൂസറുടെ ഫോൾഡറിലേക്ക് കോൺഫിഗറേഷനുകൾ പകർന്നു നൽകുന്നു
 cp -rT /etc/skel /home/retro/ 2>/dev/null || true
 chown -R retro:retro /home/retro 2>/dev/null || true
+
+AUTOHOOK
+chmod +x config/hooks/live/0050-setup-autologin.hook.chroot
 
 # Pure BIOS Dummy Theme & Isolinux binary hook
 mkdir -p config/hooks/binary
