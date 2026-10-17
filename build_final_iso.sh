@@ -146,25 +146,21 @@ mkdir -p config/hooks/normal
 mkdir -p config/hooks/live
 
 # Copy the whole project into the chroot filesystem
+# includes.chroot ഡയറക്ടറികൾ കൃത്യമായി ഉണ്ടാക്കുന്നു
+mkdir -p config/includes.chroot/opt/retro-os
+mkdir -p config/includes.chroot/usr/share/backgrounds/retro-os
+
+# പ്രൊജക്റ്റ് ഫയലുകൾ പകർന്നു നൽകുന്നു
 cp -a "${SCRIPT_DIR}"/*.sh "${SCRIPT_DIR}/config.env" "${SCRIPT_DIR}/retro" \
-    config/includes.chroot/opt/retro-os/ 2>/dev/null || true
+    config/includes.chroot/opt/retro-os/
+
+# ഇമേജുകൾ സിസ്റ്റത്തിലേക്ക് കോപ്പി ചെയ്യുന്നു
+if [ -d "${SCRIPT_DIR}/assets" ]; then
+    cp -a "${SCRIPT_DIR}/assets"/* config/includes.chroot/usr/share/backgrounds/retro-os/
+fi
 
 chmod +x config/includes.chroot/opt/retro-os/*.sh 2>/dev/null || true
 chmod +x config/includes.chroot/opt/retro-os/retro 2>/dev/null || true
-
-write_hook() {
-    local hook_name="$1"
-    local target_script="$2"
-    cat > "config/hooks/normal/${hook_name}" << HOOK
-#!/bin/sh
-set -e
-export RETRO_CHROOT_BUILD=1
-chmod +x /opt/retro-os/${target_script}
-/opt/retro-os/${target_script}
-HOOK
-    chmod +x "config/hooks/normal/${hook_name}"
-    cp -a "config/hooks/normal/${hook_name}" "config/hooks/live/${hook_name}"
-}
 
 write_hook "0100-retro-engine.hook.chroot"    "01_engine_setup.sh"
 write_hook "0200-retro-interface.hook.chroot" "02_interface_setup.sh"
@@ -211,6 +207,10 @@ chmod 0440 /etc/sudoers.d/retro-nopasswd
 
 AUTOHOOK
 chmod +x config/hooks/live/0050-setup-autologin.hook.chroot
+
+# യൂസറുടെ ഫോൾഡറിലേക്ക് കോൺഫിഗറേഷനുകൾ പകർന്നു നൽകുന്നു
+cp -rT /etc/skel /home/retro/ 2>/dev/null || true
+chown -R retro:retro /home/retro 2>/dev/null || true
 
 # Pure BIOS Dummy Theme & Isolinux binary hook
 mkdir -p config/hooks/binary
