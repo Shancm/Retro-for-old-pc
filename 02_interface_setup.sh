@@ -102,7 +102,7 @@ cat << 'EOF' > "${SKEL_DIR}/.config/openbox/menu.xml"
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="Openbox 3">
     <item label="Terminal"><action name="Execute"><command>kitty</command></action></item>
-    <item label="Web Browser"><action name="Execute"><command>midori</command></action></item>
+    <item label="Web Browser"><action name="Execute"><command>firefox-esr</command></action></item>
     <item label="File Manager"><action name="Execute"><command>pcmanfm</command></action></item>
     <separator />
     <menu id="cyber-tools" label="Security Tools">
