@@ -54,10 +54,20 @@ background_color = #0D0F12 90
 border_color = #00FF9C 40
 EOF
 
+# Kitty ടെർമിനൽ ബാക്ക്ഗ്രൗണ്ട് സെറ്റിംഗ്സ്
+mkdir -p "${SKEL_DIR}/.config/kitty"
+cat << 'EOF' > "${SKEL_DIR}/.config/kitty/kitty.conf"
+font_family      JetBrains Mono
+font_size        11.0
+background_opacity 0.85
+background_image /usr/share/backgrounds/retro-os/term_bg.png
+background_image_layout cscaled
+EOF
+
 # 5. ഓട്ടോസ്റ്റാർട്ട് സെറ്റിംഗ്സ്
 mkdir -p "${SKEL_DIR}/.config/openbox"
 cat << 'EOF' > "${SKEL_DIR}/.config/openbox/autostart"
-feh --bg-color "#0D0F12" &
+feh --bg-fill /usr/share/backgrounds/retro-os/wallpaper.png &
 picom -b &
 tint2 &
 EOF
