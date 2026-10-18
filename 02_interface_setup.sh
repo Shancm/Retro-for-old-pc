@@ -169,4 +169,86 @@ if [[ -d "${SKEL_DIR}" ]]; then
     chmod -R u=rwX,go=rX "${SKEL_DIR}" 2>/dev/null || true
 fi
 
+# -------------------------------------------------------------------------
+# Windows 7 Style Start Menu + Direct Right-Click Menu Setup
+# -------------------------------------------------------------------------
+
+# 1. പാക്കേജുകൾ ഇൻസ്റ്റാൾ ചെയ്യുന്നു (jgmenu വിൻഡോസ് 7 ശൈലിയിലുള്ള മെനു നൽകും)
+apt-get install -y -qq jgmenu xfce4-terminal papirus-icon-theme || true
+
+# 2. PCManFM Right-Click ഓപ്പൺബോക്സ് മെനുവിലേക്ക് മാറ്റുന്നു
+# (ഡെസ്ക്ടോപ്പിൽ സാധാരണ റൈറ്റ്-ക്ലിക്ക് ചെയ്യുമ്പോൾ തന്നെ Retro മെനു വരും)
+mkdir -p "${SKEL_DIR}/.config/pcmanfm/default"
+cat << 'EOF' > "${SKEL_DIR}/.config/pcmanfm/default/desktop-items-0.conf"
+[*]
+wallpaper_mode=stretch
+wallpaper=/usr/share/backgrounds/retro-os/wallpaper.png
+desktop_bg=#000000
+desktop_fg=#ffffff
+desktop_shadow=#000000
+desktop_font=Sans 10
+show_wm_menu=1
+sort_by=2
+sort_type=0
+set_wallpaper_all=1
+show_documents=0
+show_trash=1
+show_mounts=1
+EOF
+
+# 3. Windows 7 Style Tint2 Launcher Config
+mkdir -p "${SKEL_DIR}/.config/tint2"
+cat << 'EOF' > "${SKEL_DIR}/.config/tint2/tint2rc"
+# Tint2 Panel with Win7 Start Button
+panel_items = LTS
+panel_position = bottom center horizontal
+panel_size = 100% 36
+panel_margin = 0 0
+panel_padding = 4 2 4
+panel_background_id = 1
+wm_menu = 1
+
+# Start Button (Launcher)
+launcher_padding = 4 2
+launcher_background_id = 0
+launcher_icon_size = 28
+launcher_item_app = /usr/share/applications/start-menu.desktop
+
+# Taskbar & System Tray
+taskbar_mode = single_desktop
+taskbar_padding = 2 2 2
+taskbar_background_id = 0
+taskbar_active_background_id = 2
+systray_padding = 4 2 4
+clock_font_color = #ffffff 100
+time1_format = %I:%M %p
+time2_format = %A %d %B
+
+# Background styles
+rounded = 0
+border_width = 1
+border_color = #222222 100
+background_color = #111111 90
+
+rounded = 2
+border_width = 1
+border_color = #00aaff 100
+background_color = #005588 80
+EOF
+
+# 4. Start Button Desktop Launcher ഉണ്ടാക്കുന്നു
+cat << 'EOF' > /usr/share/applications/start-menu.desktop
+[Desktop Entry]
+Name=Start Menu
+Comment=Windows 7 Style Application Menu
+Exec=jgmenu_run || xdotool key super+space
+Icon=distributor-logo-debian
+Terminal=false
+Type=Application
+Categories=System;
+EOF
+
+# 5. റൈറ്റ്-ക്ലിക്ക് കോപ്പി പേസ്റ്റ് ഉള്ള ടെർമിനൽ ഡിഫോൾട്ട് ആക്കുന്നു
+update-alternatives --set x-terminal-emulator /usr/bin/xfce4-terminal 2>/dev/null || true
+
 retro_ok "=== Full-fledged Retro OS Desktop Environment configured successfully. ==="
