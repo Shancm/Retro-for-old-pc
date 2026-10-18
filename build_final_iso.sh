@@ -178,7 +178,75 @@ cp -a "${SCRIPT_DIR}"/*.sh "${SCRIPT_DIR}/config.env" "${SCRIPT_DIR}/retro" \
 if [ -d "${SCRIPT_DIR}/assets" ]; then
     cp -a "${SCRIPT_DIR}/assets"/* config/includes.chroot/usr/share/backgrounds/retro-os/
 fi
-cp -a "${SCRIPT_DIR}"/*.png config/includes.chroot/usr/share/backgrounds/retro-os/ 2>/dev/null || true
+# -----------------------------------------------------------------------------
+# Chroot Includes: Wallpapers, Themes & Skel configs
+# -----------------------------------------------------------------------------
+mkdir -p config/includes.chroot/opt/retro-os
+mkdir -p config/includes.chroot/usr/share/backgrounds/retro-os
+mkdir -p config/includes.chroot/etc/skel/.config/openbox
+mkdir -p config/includes.chroot/etc/skel/.config/pcmanfm/default
+mkdir -p config/includes.chroot/etc/skel/.config/tint2
+mkdir -p config/includes.chroot/etc/skel/.config/kitty
+mkdir -p config/includes.chroot/etc/skel/Desktop
+
+# പ്രൊജക്റ്റ് ഫയലുകൾ പകർന്നു നൽകുന്നു
+cp -a "${SCRIPT_DIR}"/*.sh "${SCRIPT_DIR}/config.env" "${SCRIPT_DIR}/retro" \
+    config/includes.chroot/opt/retro-os/
+
+# ഇമേജുകൾ എവിടെയാണെങ്കിലും കണ്ടെത്തി പകർത്തുന്നു
+find "${SCRIPT_DIR}" -maxdepth 2 -type f \( -name "*.png" -o -name "*.jpg" \) -exec cp -f {} config/includes.chroot/usr/share/backgrounds/retro-os/ \; 2>/dev/null || true
+
+# 1. PCManFM Wallpaper & Desktop Right-Click Settings
+cat << 'EOF' > config/includes.chroot/etc/skel/.config/pcmanfm/default/desktop-items-0.conf
+[*]
+wallpaper_mode=fit
+wallpaper=/usr/share/backgrounds/retro-os/wallpaper.png
+desktop_bg=#0D0F12
+desktop_fg=#E0E0E0
+desktop_shadow=#000000
+desktop_font=JetBrains Mono 10
+show_wm_menu=0
+sort_by=2
+sort_type=0
+show_documents=0
+show_trash=1
+show_mounts=1
+EOF
+
+# 2. Openbox Menu (Right-click fallback)
+cat << 'EOF' > config/includes.chroot/etc/skel/.config/openbox/menu.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="Retro OS">
+    <item label="Terminal"><action name="Execute"><command>kitty</command></action></item>
+    <item label="Web Browser"><action name="Execute"><command>firefox-esr</command></action></item>
+    <item label="File Manager"><action name="Execute"><command>pcmanfm</command></action></item>
+    <separator />
+    <menu id="cyber-tools" label="Security Tools">
+      <item label="Nmap Scanner"><action name="Execute"><command>kitty -e nmap</command></action></item>
+      <item label="SQLMap"><action name="Execute"><command>kitty -e sqlmap</command></action></item>
+      <item label="Hydra"><action name="Execute"><command>kitty -e hydra</command></action></item>
+      <item label="John The Ripper"><action name="Execute"><command>kitty -e john</command></action></item>
+      <item label="Nikto"><action name="Execute"><command>kitty -e nikto</command></action></item>
+      <item label="Wifite"><action name="Execute"><command>kitty -e sudo wifite</command></action></item>
+    </menu>
+    <separator />
+    <item label="Exit"><action name="Exit" /></item>
+  </menu>
+</openbox_menu>
+EOF
+
+# 3. Openbox Autostart (വാൾപേപ്പർ, പാനൽ, ഡെസ്ക്ടോപ്പ്)
+cat << 'EOF' > config/includes.chroot/etc/skel/.config/openbox/autostart
+picom -b &
+tint2 &
+pcmanfm --desktop &
+EOF
+
+# 4. ടൈംസോൺ ഇന്ത്യയിലേക്ക് സെറ്റ് ചെയ്യുന്നു
+mkdir -p config/includes.chroot/etc
+ln -sf /usr/share/zoneinfo/Asia/Kolkata config/includes.chroot/etc/localtime
+echo "Asia/Kolkata" > config/includes.chroot/etc/timezone
 
 chmod +x config/includes.chroot/opt/retro-os/*.sh 2>/dev/null || true
 chmod +x config/includes.chroot/opt/retro-os/retro 2>/dev/null || true
