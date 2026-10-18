@@ -160,6 +160,7 @@ make_tool_entry "Wifite" "wifite" "network-wireless"
 
 # 10. ഡെസ്ക്ടോപ്പിലേക്ക് പ്രധാനപ്പെട്ട ആപ്പുകളുടെ ഷോർട്ട്കട്ടുകൾ നൽകുന്നു
 cp -a /usr/share/applications/firefox-esr.desktop "${SKEL_DIR}/Desktop/" 2>/dev/null || true
+cp -a /usr/share/applications/brave-browser.desktop "${SKEL_DIR}/Desktop/" 2>/dev/null || true
 cp -a /usr/share/applications/pcmanfm.desktop "${SKEL_DIR}/Desktop/" 2>/dev/null || true
 cp -a /usr/share/applications/*.desktop "${SKEL_DIR}/Desktop/" 2>/dev/null || true
 chmod +x "${SKEL_DIR}/Desktop/"*.desktop 2>/dev/null || true
