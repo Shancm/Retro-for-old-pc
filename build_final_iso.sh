@@ -76,6 +76,13 @@ lb config \
 
 retro_ok "live-build config generated."
 
+# Brave Browser GPG Key & Repository setup
+mkdir -p config/archives
+curl -fsSLo config/archives/brave-browser-release.key https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+cat << 'EOF' > config/archives/brave-browser-release.list.chroot
+deb [signed-by=/etc/apt/trusted.gpg.d/brave-browser-release.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main
+EOF
+
 # -----------------------------------------------------------------------------
 # 2.5 Package lists (Lightweight Stack for 1 GB RAM & Pure BIOS)
 # -----------------------------------------------------------------------------
@@ -150,6 +157,7 @@ python3-pip
 nodejs
 geany
 firefox-esr
+brave-browser
 mpv
 yt-dlp
 
