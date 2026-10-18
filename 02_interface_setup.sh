@@ -2,19 +2,29 @@
 set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+# shellcheck source=./config.env
 source "${SCRIPT_DIR}/config.env"
 require_root
 
 trap 'retro_error "02_interface_setup.sh failed at line ${LINENO}."' ERR
 
-retro_info "Configuring Retro OS Ultra-Lite BIOS GUI..."
+retro_info "Configuring Retro OS Desktop Interface & Native Desktop Controls..."
 export DEBIAN_FRONTEND=noninteractive
 
-# 1. ആവശ്യമായ ടൂളുകൾ ഇൻസ്റ്റാൾ ചെയ്യൽ
-apt-get update -qq
-apt-get install -y -qq openbox tint2 rofi feh picom lightdm lightdm-gtk-greeter kitty fonts-jetbrains-mono papirus-icon-theme >/dev/null
+SKEL_DIR="/etc/skel"
+mkdir -p "${SKEL_DIR}/.config/openbox"
+mkdir -p "${SKEL_DIR}/.config/tint2"
+mkdir -p "${SKEL_DIR}/.config/kitty"
+mkdir -p "${SKEL_DIR}/.config/picom"
+mkdir -p "${SKEL_DIR}/.config/pcmanfm/default"
+mkdir -p "${SKEL_DIR}/Desktop"
+mkdir -p /usr/share/applications
 
-# 2. LightDM ഓട്ടോലോഗിൻ സെറ്റപ്പ്
+# 1. ടൈംസോൺ ഡിഫോൾട്ടായി ഇന്ത്യയിലേക്ക് ക്രമീകരിക്കുന്നു
+ln -sf /usr/share/zoneinfo/Asia/Kolkata /etc/localtime
+echo "Asia/Kolkata" > /etc/timezone
+
+# 2. LightDM ഓട്ടോലോഗിൻ
 mkdir -p /etc/lightdm/lightdm.conf.d
 cat << 'EOF' > /etc/lightdm/lightdm.conf.d/autologin.conf
 [Seat:*]
@@ -22,108 +32,110 @@ autologin-user=retro
 autologin-user-timeout=0
 user-session=openbox
 EOF
-
 systemctl set-default graphical.target >/dev/null 2>&1 || true
-if is_command systemctl; then
-    systemctl enable lightdm.service >/dev/null 2>&1 || true
-fi
 
-# 3. വിഷ്വൽ എഫക്റ്റുകൾക്കായി Picom കോമ്പോസിറ്റർ
-mkdir -p "${SKEL_DIR}/.config/picom"
-cat << 'EOF' > "${SKEL_DIR}/.config/picom/picom.conf"
-backend = "xrender";
-fading = true;
-fade-delta = 4;
-corner-radius = 6;
-inactive-opacity = 0.90;
-active-opacity = 0.98;
+# 3. PCManFM ഡെസ്ക്ടോപ്പ് കോൺഫിഗറേഷൻ (Right-Click Context Menu, Wallpaper, Desktop Icons)
+cat << 'EOF' > "${SKEL_DIR}/.config/pcmanfm/default/desktop-items-0.conf"
+[*]
+wallpaper_mode=fit
+wallpaper=/usr/share/backgrounds/retro-os/wallpaper.png
+desktop_bg=#0D0F12
+desktop_fg=#E0E0E0
+desktop_shadow=#000000
+desktop_font=JetBrains Mono 10
+show_wm_menu=0
+sort_by=2
+sort_type=0
+show_documents=0
+show_trash=1
+show_mounts=1
 EOF
 
-# 4. ടാസ്ക്ബാർ പാനൽ (Tint2)
-mkdir -p "${SKEL_DIR}/.config/tint2"
+# 4. ഓപ്പൺബോക്സ് ആക്‌ഷൻ & കീബോർഡ് ക്രമീകരണങ്ങൾ (rc.xml)
+cat << 'EOF' > "${SKEL_DIR}/.config/openbox/rc.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <keyboard>
+    <keybind key="W-Return"><action name="Execute"><command>kitty</command></action></keybind>
+    <keybind key="W-space"><action name="Execute"><command>rofi -show drun -theme-str 'window {width: 400px; border: 2px; border-color: #00FF9C; background-color: #0D0F12; font: "JetBrains Mono 10";}'</command></action></keybind>
+    <keybind key="W-e"><action name="Execute"><command>pcmanfm</command></action></keybind>
+  </keyboard>
+  <mouse>
+    <context name="Root">
+      <mousebind button="Right" action="Press">
+        <action name="ShowMenu"><menu>root-menu</menu></action>
+      </mousebind>
+    </context>
+  </mouse>
+</openbox_config>
+EOF
+
+# 5. ഓപ്പൺബോക്സ് ആപ്പ് മെനു (menu.xml)
+cat << 'EOF' > "${SKEL_DIR}/.config/openbox/menu.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="Retro OS">
+    <item label="Terminal"><action name="Execute"><command>kitty</command></action></item>
+    <item label="Web Browser"><action name="Execute"><command>firefox-esr</command></action></item>
+    <item label="File Manager"><action name="Execute"><command>pcmanfm</command></action></item>
+    <separator />
+    <menu id="cyber-tools" label="Security Tools">
+      <item label="Nmap Scanner"><action name="Execute"><command>kitty -e nmap</command></action></item>
+      <item label="SQLMap"><action name="Execute"><command>kitty -e sqlmap</command></action></item>
+      <item label="Hydra"><action name="Execute"><command>kitty -e hydra</command></action></item>
+      <item label="John The Ripper"><action name="Execute"><command>kitty -e john</command></action></item>
+      <item label="Nikto"><action name="Execute"><command>kitty -e nikto</command></action></item>
+      <item label="Wifite"><action name="Execute"><command>kitty -e sudo wifite</command></action></item>
+    </menu>
+    <separator />
+    <item label="Reconfigure Openbox"><action name="Reconfigure" /></item>
+    <item label="Exit"><action name="Exit" /></item>
+  </menu>
+</openbox_menu>
+EOF
+
+# 6. ഓട്ടോസ്റ്റാർട്ട് സ്ക്രിപ്റ്റ് (autostart)
+cat << 'EOF' > "${SKEL_DIR}/.config/openbox/autostart"
+# 1. കോമ്പോസിറ്റർ, വോളിയം, നെറ്റ്‌വർക്ക്
+picom -b &
+nm-applet &
+volumeicon &
+
+# 2. ടാസ്ക്ബാർ
+tint2 &
+
+# 3. നേറ്റീവ് ഡെസ്ക്ടോപ്പ് (Right-click menu, Copy/Paste, Icons, Wallpaper)
+pcmanfm --desktop &
+EOF
+
+# 7. ടാസ്ക്ബാർ പാനൽ (Tint2)
 cat << 'EOF' > "${SKEL_DIR}/.config/tint2/tint2rc"
 panel_position = bottom center horizontal
 panel_size = 100% 32
 panel_margin = 0 0
 panel_padding = 4 2 4
 panel_background_id = 1
-font = JetBrainsMono Nerd Font 10
+font = JetBrains Mono 10
 task_active_background_id = 2
 clock_font_color = #00FF9C
 background_color = #0D0F12 90
 border_color = #00FF9C 40
+time1_format = %H:%M:%S | %A %d %b
 EOF
 
-# Kitty ടെർമിനൽ ബാക്ക്ഗ്രൗണ്ട് സെറ്റിംഗ്സ്
-mkdir -p "${SKEL_DIR}/.config/kitty"
+# 8. Kitty ടെർമിനൽ
 cat << 'EOF' > "${SKEL_DIR}/.config/kitty/kitty.conf"
 font_family      JetBrains Mono
 font_size        11.0
 background_opacity 0.85
 background_image /usr/share/backgrounds/retro-os/term_bg.png
 background_image_layout cscaled
+copy_on_select yes
+map ctrl+c copy_to_clipboard
+map ctrl+v paste_from_clipboard
 EOF
 
-# 5. ഓട്ടോസ്റ്റാർട്ട് സെറ്റിംഗ്സ്
-mkdir -p "${SKEL_DIR}/.config/openbox"
-cat << 'EOF' > "${SKEL_DIR}/.config/openbox/autostart"
-feh --bg-fill /usr/share/backgrounds/retro-os/wallpaper.png &
-pcmanfm --desktop &
-picom -b &
-tint2 &
-EOF
-
-# ഡെസ്ക്ടോപ്പ് ഫോൾഡറിലേക്ക് ഷോർട്ട്കട്ടുകൾ നൽകുന്നു
-mkdir -p "${SKEL_DIR}/Desktop"
-cp -a /usr/share/applications/*.desktop "${SKEL_DIR}/Desktop/" 2>/dev/null || true
-chmod +x "${SKEL_DIR}/Desktop/"*.desktop 2>/dev/null || true
-
-# 6. ഷോർട്ട്കട്ടുകൾ
-cat << 'EOF' > "${SKEL_DIR}/.config/openbox/rc.xml"
-<?xml version="1.0" encoding="UTF-8"?>
-<openbox_config xmlns="http://openbox.org/3.4/rc">
-  <keyboard>
-    <keybind key="W-Return">
-      <action name="Execute"><command>kitty</command></action>
-    </keybind>
-    <keybind key="W-space">
-      <action name="Execute"><command>rofi -show drun -theme-str 'window {width: 400px; border: 2px; border-color: #00FF9C; background-color: #0D0F12; font: "JetBrainsMono Nerd Font 10";}'</command></action>
-    </keybind>
-  </keyboard>
-</openbox_config>
-EOF
-
-# -----------------------------------------------------------------------------
-# Openbox Right-Click Menu
-# -----------------------------------------------------------------------------
-mkdir -p "${SKEL_DIR}/.config/openbox"
-cat << 'EOF' > "${SKEL_DIR}/.config/openbox/menu.xml"
-<?xml version="1.0" encoding="UTF-8"?>
-<openbox_menu xmlns="http://openbox.org/3.4/menu">
-  <menu id="root-menu" label="Openbox 3">
-    <item label="Terminal"><action name="Execute"><command>kitty</command></action></item>
-    <item label="Web Browser"><action name="Execute"><command>firefox-esr</command></action></item>
-    <item label="File Manager"><action name="Execute"><command>pcmanfm</command></action></item>
-    <separator />
-    <menu id="cyber-tools" label="Security Tools">
-      <item label="Nmap"><action name="Execute"><command>kitty -e nmap</command></action></item>
-      <item label="SQLMap"><action name="Execute"><command>kitty -e sqlmap</command></action></item>
-      <item label="Hydra"><action name="Execute"><command>kitty -e hydra</command></action></item>
-      <item label="John"><action name="Execute"><command>kitty -e john</command></action></item>
-      <item label="Nikto"><action name="Execute"><command>kitty -e nikto</command></action></item>
-      <item label="Wifite"><action name="Execute"><command>kitty -e sudo wifite</command></action></item>
-    </menu>
-    <separator />
-    <item label="Exit"><action name="Exit" /></item>
-  </menu>
-</openbox_menu>
-EOF
-
-# -----------------------------------------------------------------------------
-# Security Tools Desktop Entries (Rofi & Desktop Support)
-# -----------------------------------------------------------------------------
-mkdir -p /usr/share/applications
-
+# 9. സെക്യൂരിറ്റി ടൂളുകൾക്കുള്ള .desktop ഫയലുകൾ നിർമ്മിക്കുന്നു
 make_tool_entry() {
     local name="$1"
     local cmd="$2"
@@ -146,9 +158,15 @@ make_tool_entry "John The Ripper" "john" "utilities-terminal"
 make_tool_entry "Nikto" "nikto" "utilities-terminal"
 make_tool_entry "Wifite" "wifite" "network-wireless"
 
-# 7. യൂസർ പെർമിഷനുകൾ ശരിയാക്കൽ
+# 10. ഡെസ്ക്ടോപ്പിലേക്ക് പ്രധാനപ്പെട്ട ആപ്പുകളുടെ ഷോർട്ട്കട്ടുകൾ നൽകുന്നു
+cp -a /usr/share/applications/firefox-esr.desktop "${SKEL_DIR}/Desktop/" 2>/dev/null || true
+cp -a /usr/share/applications/pcmanfm.desktop "${SKEL_DIR}/Desktop/" 2>/dev/null || true
+cp -a /usr/share/applications/*.desktop "${SKEL_DIR}/Desktop/" 2>/dev/null || true
+chmod +x "${SKEL_DIR}/Desktop/"*.desktop 2>/dev/null || true
+
+# 11. യൂസർ പെർമിഷനുകൾ സജ്ജമാക്കുന്നു
 if [[ -d "${SKEL_DIR}" ]]; then
     chmod -R u=rwX,go=rX "${SKEL_DIR}" 2>/dev/null || true
 fi
 
-retro_ok "=== Aesthetic Ultra-Lite GUI setup complete (RAM: ~120MB). ==="
+retro_ok "=== Full-fledged Retro OS Desktop Environment configured successfully. ==="
