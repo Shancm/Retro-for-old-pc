@@ -125,6 +125,18 @@ pipewire
 pipewire-audio
 wireplumber
 
+# Clipboard, Archive, File Management Utilities
+xclip
+xsel
+gvfs
+gvfs-backends
+gvfs-fuse
+xarchiver
+unzip
+p7zip-full
+tzdata
+volumeicon-alsa
+
 # Core Utilities
 sudo
 curl
@@ -154,8 +166,7 @@ retro_info "Installing chroot hooks into config/hooks/live/ ..."
 mkdir -p config/hooks/normal
 mkdir -p config/hooks/live
 
-# Copy the whole project into the chroot filesystem
-# includes.chroot ഡയറക്ടറികൾ കൃത്യമായി ഉണ്ടാക്കുന്നു
+# includes.chroot ഡയറക്ടറികൾ ഉണ്ടാക്കുന്നു
 mkdir -p config/includes.chroot/opt/retro-os
 mkdir -p config/includes.chroot/usr/share/backgrounds/retro-os
 
@@ -163,10 +174,11 @@ mkdir -p config/includes.chroot/usr/share/backgrounds/retro-os
 cp -a "${SCRIPT_DIR}"/*.sh "${SCRIPT_DIR}/config.env" "${SCRIPT_DIR}/retro" \
     config/includes.chroot/opt/retro-os/
 
-# ഇമേജുകൾ സിസ്റ്റത്തിലേക്ക് കോപ്പി ചെയ്യുന്നു
+# ഇമേജുകൾ assets ഫോൾഡറിൽ നിന്നോ റൂട്ട് ഫോൾഡറിൽ നിന്നോ പൂർണ്ണമായി പകർത്തുന്നു
 if [ -d "${SCRIPT_DIR}/assets" ]; then
     cp -a "${SCRIPT_DIR}/assets"/* config/includes.chroot/usr/share/backgrounds/retro-os/
 fi
+cp -a "${SCRIPT_DIR}"/*.png config/includes.chroot/usr/share/backgrounds/retro-os/ 2>/dev/null || true
 
 chmod +x config/includes.chroot/opt/retro-os/*.sh 2>/dev/null || true
 chmod +x config/includes.chroot/opt/retro-os/retro 2>/dev/null || true
