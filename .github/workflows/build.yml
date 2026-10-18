@@ -1,4 +1,4 @@
-name: Build Retro OS v1.1 lightweight 
+name: Build Retro OS v1.1 lightweight
 
 on:
   workflow_dispatch:
@@ -6,38 +6,46 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 120
     steps:
-      - name: Setup Environment and Fix Syslinux Paths
+      # Build the code in THIS repo/commit (the old workflow cloned upstream main instead).
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Debian + firmware + desktop needs far more than the ~14 GB a fresh runner has free.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h /
+
+      - name: Normalize line endings and permissions (scripts only)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq git dos2unix isolinux syslinux syslinux-common syslinux-utils xorriso mtools dosfstools squashfs-tools live-build
+          sudo apt-get install -y -qq dos2unix
+          dos2unix -q ./*.sh ./config.env ./retro
+          chmod +x ./*.sh ./retro
 
-          # isolinux.bin, vesamenu.c32 ഫയലുകൾ lb ആവശ്യപ്പെടുന്ന പാത്തിലേക്ക് നൽകുന്നു
-          sudo mkdir -p /root/isolinux /usr/share/live/build/bootloaders/isolinux /usr/lib/live/build/bootloaders/isolinux
-          sudo cp -f /usr/lib/ISOLINUX/isolinux.bin /root/isolinux/ 2>/dev/null || sudo find /usr -name "isolinux.bin" -exec cp {} /root/isolinux/ \; 2>/dev/null || true
-          sudo cp -f /usr/lib/syslinux/modules/bios/* /root/isolinux/ 2>/dev/null || sudo find /usr -name "*.c32" -exec cp {} /root/isolinux/ \; 2>/dev/null || true
+      # Run inside Debian trixie so live-build/debootstrap/syslinux match the target
+      # distro instead of whatever the Ubuntu runner ships.
+      - name: Build ISO (debian:trixie container)
+        run: |
+          docker run --rm --privileged \
+            -v "$GITHUB_WORKSPACE":/work -w /work \
+            debian:trixie \
+            bash -c 'apt-get update -qq && apt-get install -y -qq ca-certificates && bash ./build_final_iso.sh'
 
-          # Clone repository
-          cd /home/runner
-          rm -rf my-retro-build
-          git clone --depth 1 https://github.com/Shancm/Retro-for-old-pc.git my-retro-build
-          cd my-retro-build
-
-          # Fix line endings and permissions
-          find . -type f -exec dos2unix -q {} + || true
-          chmod -R +x .
-
-          # Start build process
-          BUILD_SCRIPT=$(ls | grep -E "build.*iso.*\.sh" | head -n 1)
-          echo "Starting Build with: $BUILD_SCRIPT"
-          sudo env "PATH=$PATH" bash "./$BUILD_SCRIPT"
-
-          # Collect build output
-          mkdir -p "$GITHUB_WORKSPACE/output"
-          find . -name "*.iso" -exec mv {} "$GITHUB_WORKSPACE/output/" \; 2>/dev/null || true
+      - name: Collect ISO
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" "$GITHUB_WORKSPACE"
+          mkdir -p output
+          mv ./*.iso output/
+          ls -lh output/
 
       - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
           name: Retro-OS-v1.1-ISO-lightweight
           path: output/*.iso
+          if-no-files-found: error
+          compression-level: 0
