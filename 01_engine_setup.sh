@@ -154,7 +154,17 @@ retro_ok "sysctl tuning written to ${SYSCTL_FILE}."
 # -----------------------------------------------------------------------------
 retro_info "Installing Btrfs and Snapper tools into base image..."
 export DEBIAN_FRONTEND=noninteractive
-apt-get install -y -qq snapper btrfs-progs grub-btrfs inotify-tools >/dev/null
+# Btrfs, Snapper കൂടാതെ grub-btrfs ബിൽഡ് ചെയ്യാനുള്ള ടൂളുകൾ ഇൻസ്റ്റാൾ ചെയ്യുന്നു
+apt-get install -y -qq snapper btrfs-progs inotify-tools git make gawk >/dev/null
+
+# grub-btrfs ഔദ്യോഗിക GitHub സോഴ്സിൽ നിന്ന് ഇൻസ്റ്റാൾ ചെയ്യുന്നു
+if ! is_command grub-btrfs; then
+    git clone --depth=1 https://github.com/Antynea/grub-btrfs.git /tmp/grub-btrfs >/dev/null 2>&1 || true
+    if [ -d "/tmp/grub-btrfs" ]; then
+        make -C /tmp/grub-btrfs install >/dev/null 2>&1 || true
+        rm -rf /tmp/grub-btrfs
+    fi
+fi
 
 retro_info "Checking root filesystem type for Snapper configuration..."
 
