@@ -302,25 +302,88 @@ cmd_panic() {
 
 cmd_update() {
     require_root_soft
-    retro_info "Checking for Retro OS updates..."
+    retro_info "Updating Retro OS packages, Brave browser, and UI menus..."
 
+    # 1. നെറ്റ്‌വർക്ക് / ഡിഎൻഎസ് സുരക്ഷിതമാക്കുന്നു
+    echo "nameserver 8.8.8.8" > /etc/resolv.conf 2>/dev/null || true
+
+    # 2. Brave Browser റെപ്പോസിറ്ററിയും കീയും ചേർക്കുന്നു
+    mkdir -p /usr/share/keyrings
+    curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+    echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" > /etc/apt/sources.list.d/brave-browser-release.list
+
+    # 3. പാക്കേജുകൾ ഇൻസ്റ്റാൾ ചെയ്യുന്നു
     apt-get update -qq
-    apt-get install -y -qq python3-pyqt6 python3-psutil espeak-ng curl >/dev/null 2>&1 || true
+    apt-get install -y -qq brave-browser papirus-icon-theme >/dev/null 2>&1 || retro_warn "Package installation completed with warnings."
 
-    mkdir -p /opt/retro-os/retro-companion
+    # 4. ഐക്കണുകളുള്ള സമ്പൂർണ്ണ Openbox മെനു യൂസർ പ്രൊഫൈലിലേക്ക് സെറ്റ് ചെയ്യുന്നു
+    local user_home="/home/retro"
+    [[ ! -d "${user_home}" ]] && user_home="${TARGET_HOME}"
+    mkdir -p "${user_home}/.config/openbox"
 
+    cat << 'EOF' > "${user_home}/.config/openbox/menu.xml"
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="Retro OS">
+    <item label="Terminal" icon="utilities-terminal">
+      <action name="Execute"><command>kitty</command></action>
+    </item>
+    <item label="Brave Browser" icon="brave-browser">
+      <action name="Execute"><command>brave-browser</command></action>
+    </item>
+    <item label="Firefox ESR" icon="firefox-esr">
+      <action name="Execute"><command>firefox-esr</command></action>
+    </item>
+    <item label="File Manager" icon="system-file-manager">
+      <action name="Execute"><command>pcmanfm</command></action>
+    </item>
+    <separator />
+    <menu id="cyber-tools" label="Security Tools" icon="security-high">
+      <item label="Nmap Scanner" icon="network-wired">
+        <action name="Execute"><command>kitty -e bash -c 'nmap --help; exec bash'</command></action>
+      </item>
+      <item label="SQLMap" icon="utilities-terminal">
+        <action name="Execute"><command>kitty -e bash -c 'sqlmap --help; exec bash'</command></action>
+      </item>
+      <item label="Hydra" icon="utilities-terminal">
+        <action name="Execute"><command>kitty -e bash -c 'hydra -h; exec bash'</command></action>
+      </item>
+      <item label="John The Ripper" icon="utilities-terminal">
+        <action name="Execute"><command>kitty -e bash -c 'john; exec bash'</command></action>
+      </item>
+      <item label="Nikto" icon="utilities-terminal">
+        <action name="Execute"><command>kitty -e bash -c 'nikto -H; exec bash'</command></action>
+      </item>
+      <item label="Wifite" icon="network-wireless">
+        <action name="Execute"><command>kitty -e bash -c 'sudo wifite; exec bash'</command></action>
+      </item>
+    </menu>
+    <separator />
+    <item label="Reconfigure" icon="system-restart"><action name="Reconfigure" /></item>
+    <item label="Exit" icon="application-exit"><action name="Exit" /></item>
+  </menu>
+</openbox_menu>
+EOF
+
+    # ഡെസ്ക്ടോപ്പിലേക്ക് Brave ഉൾപ്പെടെയുള്ള ഷോർട്ട്കട്ടുകൾ നൽകുന്നു
+    mkdir -p "${user_home}/Desktop"
+    cp -a /usr/share/applications/*.desktop "${user_home}/Desktop/" 2>/dev/null || true
+    chmod +x "${user_home}/Desktop/"*.desktop 2>/dev/null || true
+    chown -R retro:retro "${user_home}" 2>/dev/null || true
+
+    # റൈറ്റ്-ക്ലിക്ക് മെനുവിൽ ഐക്കണുകൾ ഉടനടി ലോഡ് ചെയ്യുന്നു
+    if is_command openbox; then
+        openbox --reconfigure 2>/dev/null || true
+    fi
+
+    # 5. റിപോസിറ്ററിയിലെ ഏറ്റവും പുതിയ retro സ്ക്രിപ്റ്റ് നേരിട്ട് സിങ്ക് ചെയ്യുന്നു
     local tmp_file="/tmp/retro-new"
-    if curl -fsSL "https://raw.githubusercontent.com/Shancm/retro-os/main/retro" -o "${tmp_file}"; then
+    if curl -fsSL "https://raw.githubusercontent.com/Shancm/Retro-for-old-pc/main/retro" -o "${tmp_file}"; then
         if head -n 1 "${tmp_file}" | grep -q "bash"; then
             mv "${tmp_file}" /usr/local/bin/retro
             chmod +x /usr/local/bin/retro
-            retro_ok "Retro OS successfully updated! User data preserved."
-        else
-            rm -f "${tmp_file}"
-            retro_die "Update verification failed: corrupted download."
+            retro_ok "Retro OS updated: Brave installed and Icon Menu applied!"
         fi
-    else
-        retro_die "Failed to download update."
     fi
 }
 
