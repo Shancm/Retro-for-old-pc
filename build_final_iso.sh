@@ -221,25 +221,47 @@ show_trash=1
 show_mounts=1
 EOF
 
-# 2. Openbox Menu (Right-click fallback)
+# 2. Openbox Menu with Icons & Brave Browser
 cat << 'EOF' > config/includes.chroot/etc/skel/.config/openbox/menu.xml
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
   <menu id="root-menu" label="Retro OS">
-    <item label="Terminal"><action name="Execute"><command>kitty</command></action></item>
-    <item label="Web Browser"><action name="Execute"><command>firefox-esr</command></action></item>
-    <item label="File Manager"><action name="Execute"><command>pcmanfm</command></action></item>
+    <item label="Terminal" icon="utilities-terminal">
+      <action name="Execute"><command>kitty</command></action>
+    </item>
+    <item label="Brave Browser" icon="brave-browser">
+      <action name="Execute"><command>brave-browser</command></action>
+    </item>
+    <item label="Firefox ESR" icon="firefox-esr">
+      <action name="Execute"><command>firefox-esr</command></action>
+    </item>
+    <item label="File Manager" icon="system-file-manager">
+      <action name="Execute"><command>pcmanfm</command></action>
+    </item>
     <separator />
-    <menu id="cyber-tools" label="Security Tools">
-      <item label="Nmap Scanner"><action name="Execute"><command>kitty -e nmap</command></action></item>
-      <item label="SQLMap"><action name="Execute"><command>kitty -e sqlmap</command></action></item>
-      <item label="Hydra"><action name="Execute"><command>kitty -e hydra</command></action></item>
-      <item label="John The Ripper"><action name="Execute"><command>kitty -e john</command></action></item>
-      <item label="Nikto"><action name="Execute"><command>kitty -e nikto</command></action></item>
-      <item label="Wifite"><action name="Execute"><command>kitty -e sudo wifite</command></action></item>
+    <menu id="cyber-tools" label="Security Tools" icon="security-high">
+      <item label="Nmap Scanner" icon="network-wired">
+        <action name="Execute"><command>kitty -e bash -c 'nmap --help; exec bash'</command></action>
+      </item>
+      <item label="SQLMap" icon="utilities-terminal">
+        <action name="Execute"><command>kitty -e bash -c 'sqlmap --help; exec bash'</command></action>
+      </item>
+      <item label="Hydra" icon="utilities-terminal">
+        <action name="Execute"><command>kitty -e bash -c 'hydra -h; exec bash'</command></action>
+      </item>
+      <item label="John The Ripper" icon="utilities-terminal">
+        <action name="Execute"><command>kitty -e bash -c 'john; exec bash'</command></action>
+      </item>
+      <item label="Nikto" icon="utilities-terminal">
+        <action name="Execute"><command>kitty -e bash -c 'nikto -H; exec bash'</command></action>
+      </item>
+      <item label="Wifite" icon="network-wireless">
+        <action name="Execute"><command>kitty -e bash -c 'sudo wifite; exec bash'</command></action>
+      </item>
     </menu>
     <separator />
-    <item label="Exit"><action name="Exit" /></item>
+    <item label="Reconfigure" icon="system-restart"><action name="Reconfigure" /></item>
+    <item label="Exit" icon="application-exit"><action name="Exit" /></item>
   </menu>
 </openbox_menu>
 EOF
