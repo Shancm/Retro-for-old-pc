@@ -347,8 +347,44 @@ chown -R retro:retro /home/retro 2>/dev/null || true
 AUTOHOOK
 chmod +x config/hooks/live/0050-setup-autologin.hook.chroot
 
-retro_ok "Chroot hooks installed."
+# =========================================================================
+# LightDM Auto-Login & Permission Fixes
+# =========================================================================
 
+# 1. LightDM കോൺഫിഗറേഷൻ ഫയൽ ഉണ്ടാക്കുന്നു
+mkdir -p config/includes.chroot/etc/lightdm/lightdm.conf.d
+cat << 'EOF' > config/includes.chroot/etc/lightdm/lightdm.conf.d/01_retro_autologin.conf
+[Seat:*]
+autologin-user=retro
+autologin-user-timeout=0
+user-session=openbox
+EOF
+
+# 2. PAM പാസ്‌വേഡ് ചെക്കിംഗ് ബൈപാസ് ചെയ്യുന്നു
+mkdir -p config/includes.chroot/etc/pam.d
+cat << 'EOF' > config/includes.chroot/etc/pam.d/lightdm-autologin
+#%PAM-1.0
+auth      sufficient pam_permit.so
+account   required   pam_nologin.so
+account   required   pam_permit.so
+password  required   pam_deny.so
+session   required   pam_limits.so
+session   required   pam_env.so
+session   required   pam_permit.so
+session   optional   pam_systemd.so
+EOF
+
+# 3. Chroot അവസാന ഘട്ടത്തിൽ റൺ ചെയ്യാനുള്ള പെർമിഷൻ ഹുക്ക്
+mkdir -p config/hooks/normal
+cat << 'EOF' > config/hooks/normal/0999-fix-permissions.hook.chroot
+#!/bin/bash
+chown -R retro:retro /home/retro 2>/dev/null || true
+chmod 755 /home/retro 2>/dev/null || true
+rm -f /home/retro/.Xauthority /home/retro/.ICEauthority 2>/dev/null || true
+EOF
+chmod +x config/hooks/normal/0999-fix-permissions.hook.chroot
+
+retro_ok "Chroot hooks installed."
 # -----------------------------------------------------------------------------
 # 4. Bootloader setup & Build
 # -----------------------------------------------------------------------------
